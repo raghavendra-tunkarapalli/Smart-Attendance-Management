@@ -9,7 +9,7 @@ A robust, enterprise-grade Microservices-based Attendance and School Operations 
 The system is architected as a distributed microservices ecosystem:
 
 - **Service Registry**: Netflix Eureka Server (`:8761`)
-- **API Gateway**: Spring Cloud Gateway with reactive routing & CORS configuration (`:8080`)
+- **API Gateway**: Spring Cloud Gateway with reactive routing & CORS configuration (`:8099`)
 - **Frontend**: Modern React + Vite interactive dashboard (`:5173`)
 - **Backend Microservices**: Specialized Spring Boot domain services for attendance, admissions, assignments, schedules, examinations, enquiries, and portals.
 
@@ -22,7 +22,7 @@ The system is architected as a distributed microservices ecosystem:
                                  ▼
                   ┌──────────────────────────────┐
                   │   Spring Cloud API Gateway   │
-                  │     http://localhost:8080    │
+                  │     http://localhost:8099    │
                   └──────┬───────────────┬───────┘
                          │               │
         ┌────────────────┘               └────────────────┐
@@ -42,23 +42,23 @@ The system is architected as a distributed microservices ecosystem:
 | Service Name | Port | Description |
 | :--- | :--- | :--- |
 | **Eureka Server** | `8761` | Service discovery & registration registry |
-| **API Gateway** | `8080` | Central routing, load balancing & reverse proxy |
-| **Teacher Attendance Service** | `8096` | Attendance logging, tracking, and analytics |
-| **Student Portal Service** | `8093` | Student dashboard, profile, and academic tracking |
-| **Teacher Portal Service** | `8098` | Teacher dashboard and class management |
-| **Staff Portal Service** | `8090` | Administrative & staff operational workflows |
-| **Staff Student Service** | `8091` | Student records and staff administrative directory |
-| **Registration Service** | `8087` | User authentication, role assignment & registration |
-| **Admission Service** | `8083` | Direct student admissions and enrollment processing |
-| **Admin Admissions Service** | `8081` | Central administrative admission oversight |
-| **Student Assignment Service** | `8092` | Homework and assignment submissions |
-| **Student Schedule Service** | `8095` | Class timetables, routine, and exam schedules |
-| **Staff Examination Service** | `8089` | Exam schedule publication and grade management |
-| **Admin Enquiries Service** | `8082` | Administrative helpdesk and inquiry routing |
-| **Parent Enquiry Service** | `8086` | Parent communication and inquiry portal |
+| **API Gateway** | `8099` | Central routing, load balancing & reverse proxy |
+| **Registration Service** | `8081` | User authentication, role assignment & registration |
+| **Admission Service** | `8082` | Direct student admissions and enrollment processing |
+| **Student Enquire Service** | `8083` | Student support query management |
+| **Parent Enquiry Service** | `8084` | Parent communication and inquiry portal |
+| **Admin Enquiries Service** | `8085` | Administrative helpdesk and inquiry routing |
+| **Admin Admissions Service** | `8086` | Central administrative admission oversight |
+| **Teacher Enquiry Service** | `8087` | Faculty inquiry and grievance redressal |
 | **Staff Enquiry Service** | `8088` | Staff helpdesk and internal requests |
-| **Student Enquire Service** | `8094` | Student support query management |
-| **Teacher Enquiry Service** | `8097` | Faculty inquiry and grievance redressal |
+| **Student Portal Service** | `8090` | Student dashboard, profile, and academic tracking |
+| **Teacher Portal Service** | `8091` | Teacher dashboard and class management |
+| **Staff Portal Service** | `8092` | Administrative & staff operational workflows |
+| **Staff Student Service** | `8093` | Student records and staff administrative directory |
+| **Teacher Attendance Service** | `8094` | Attendance logging, tracking, and analytics |
+| **Student Schedule Service** | `8095` | Class timetables, routine, and exam schedules |
+| **Staff Examination Service** | `8096` | Exam schedule publication and grade management |
+| **Student Assignment Service** | `8097` | Homework and assignment submissions |
 
 ---
 
@@ -128,7 +128,7 @@ To gracefully stop all running services:
 ## 🌐 Web Endpoints
 
 - **Frontend Application**: [http://localhost:5173](http://localhost:5173)
-- **API Gateway**: [http://localhost:8080](http://localhost:8080)
+- **API Gateway**: [http://localhost:8099](http://localhost:8099)
 - **Eureka Dashboard**: [http://localhost:8761](http://localhost:8761)
 
 ---
