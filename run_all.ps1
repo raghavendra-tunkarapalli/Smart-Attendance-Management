@@ -33,7 +33,7 @@ $eureka = $services | Where-Object { $_.Name -eq "eureka-server" }
 Write-Host "Starting $($eureka.Name) on port $($eureka.Port)..." -ForegroundColor Yellow
 $eurekaLogOut = Join-Path $LogDir "$($eureka.Name)-out.log"
 $eurekaLogErr = Join-Path $LogDir "$($eureka.Name)-err.log"
-Start-Process -FilePath "mvn" -ArgumentList "spring-boot:run -DskipTests" -WorkingDirectory (Join-Path $PSScriptRoot $eureka.Path) -NoNewWindow -RedirectStandardOutput $eurekaLogOut -RedirectStandardError $eurekaLogErr
+Start-Process -FilePath "mvn.cmd" -ArgumentList "spring-boot:run -DskipTests" -WorkingDirectory (Join-Path $PSScriptRoot $eureka.Path) -NoNewWindow -RedirectStandardOutput $eurekaLogOut -RedirectStandardError $eurekaLogErr
 
 # Wait for Eureka to be up
 Write-Host "Waiting 12 seconds for Eureka Server to initialize..." -ForegroundColor DarkYellow
@@ -44,7 +44,7 @@ $gateway = $services | Where-Object { $_.Name -eq "api-gateway" }
 Write-Host "Starting $($gateway.Name) on port $($gateway.Port)..." -ForegroundColor Yellow
 $gatewayLogOut = Join-Path $LogDir "$($gateway.Name)-out.log"
 $gatewayLogErr = Join-Path $LogDir "$($gateway.Name)-err.log"
-Start-Process -FilePath "mvn" -ArgumentList "spring-boot:run -DskipTests" -WorkingDirectory (Join-Path $PSScriptRoot $gateway.Path) -NoNewWindow -RedirectStandardOutput $gatewayLogOut -RedirectStandardError $gatewayLogErr
+Start-Process -FilePath "mvn.cmd" -ArgumentList "spring-boot:run -DskipTests" -WorkingDirectory (Join-Path $PSScriptRoot $gateway.Path) -NoNewWindow -RedirectStandardOutput $gatewayLogOut -RedirectStandardError $gatewayLogErr
 
 # Wait for Gateway
 Write-Host "Waiting 5 seconds for API Gateway to initialize..." -ForegroundColor DarkYellow
@@ -56,7 +56,7 @@ foreach ($service in $services) {
     Write-Host "Starting $($service.Name) on port $($service.Port)..." -ForegroundColor Yellow
     $logFileOut = Join-Path $LogDir "$($service.Name)-out.log"
     $logFileErr = Join-Path $LogDir "$($service.Name)-err.log"
-    Start-Process -FilePath "mvn" -ArgumentList "spring-boot:run -DskipTests" -WorkingDirectory (Join-Path $PSScriptRoot $service.Path) -NoNewWindow -RedirectStandardOutput $logFileOut -RedirectStandardError $logFileErr
+    Start-Process -FilePath "mvn.cmd" -ArgumentList "spring-boot:run -DskipTests" -WorkingDirectory (Join-Path $PSScriptRoot $service.Path) -NoNewWindow -RedirectStandardOutput $logFileOut -RedirectStandardError $logFileErr
     Start-Sleep -Seconds 2 # small gap to avoid high CPU spikes starting multiple maven instances at once
 }
 
