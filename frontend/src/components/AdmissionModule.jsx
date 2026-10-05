@@ -31,7 +31,6 @@ export default function AdmissionModule({ user }) {
       }
       if (res && res.ok) {
         const data = await res.json();
-        // Filter by current student's registered name and deduplicate
         const studentAdmissions = data.filter(
           (a) =>
             a.firstName?.toLowerCase() === user?.firstName?.toLowerCase() &&
@@ -116,7 +115,6 @@ export default function AdmissionModule({ user }) {
         }));
         await fetchAdmissions();
       } else {
-        // Demomode / Client fallback if service is unreachable
         const mockAdmissionId = 'ADM-' + Math.floor(10000 + Math.random() * 90000);
         const mockResponse = {
           id: Date.now(),
@@ -145,20 +143,20 @@ export default function AdmissionModule({ user }) {
     const s = (status || 'PENDING').toUpperCase();
     if (s === 'ACCEPTED') {
       return (
-        <span className="role-pill teacher" style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', borderColor: 'rgba(34, 197, 94, 0.4)', fontSize: '0.75rem', padding: '0.2rem 0.6rem' }}>
+        <span className="role-pill student">
           ✓ Accepted
         </span>
       );
     }
     if (s === 'REJECTED') {
       return (
-        <span className="role-pill admin" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', borderColor: 'rgba(239, 68, 68, 0.4)', fontSize: '0.75rem', padding: '0.2rem 0.6rem' }}>
-          ✗ Rejected
+        <span className="role-pill admin">
+          ✕ Rejected
         </span>
       );
     }
     return (
-      <span className="role-pill staff" style={{ background: 'rgba(234, 179, 8, 0.15)', color: '#fde047', borderColor: 'rgba(234, 179, 8, 0.4)', fontSize: '0.75rem', padding: '0.2rem 0.6rem' }}>
+      <span className="role-pill parent">
         • Pending Decision
       </span>
     );
@@ -168,153 +166,134 @@ export default function AdmissionModule({ user }) {
 
   return (
     <div className="module-card">
-      <div className="module-header">
-        <div className="module-icon-badge admission">
-          <FileText size={22} color="#a855f7" />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+        <div className="card-header-icon" style={{ margin: 0 }}>
+          <FileText size={22} color="var(--color-ink)" />
         </div>
         <div>
-          <h2 className="module-title">Admission Form Module</h2>
-          <p className="module-subtitle">
-            Submit new student enrollment application (Strict limit: <strong>1 admission per student</strong>)
+          <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--color-ink)' }}>Admission Form Module</h2>
+          <p style={{ fontSize: '14px', color: 'var(--color-slate)' }}>
+            Student enrollment registration (Strict policy: 1 admission per student)
           </p>
         </div>
       </div>
 
-      {/* Warning Box for Existing Admission */}
+      {/* Existing Admission Banner */}
       {existingAdmission && !successData && (
-        <div className="alert-error-box" style={{ background: 'rgba(168, 85, 247, 0.15)', borderColor: 'rgba(168, 85, 247, 0.4)', color: '#e9d5ff', padding: '0.85rem 1.25rem', marginBottom: '1.25rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '700' }}>
-            <ShieldAlert size={18} color="#c084fc" />
-            <span>Submitted (Admission ID: <strong>{existingAdmission.admissionId}</strong> | Status: <strong>{existingAdmission.status || 'PENDING'}</strong>)</span>
+        <div className="alert-banner" style={{ backgroundColor: 'var(--color-studio-mist)', border: '1px solid var(--color-hairline-silver)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-ink)', fontWeight: 500, fontSize: '14px' }}>
+            <ShieldAlert size={16} color="var(--color-launch-orange)" />
+            <span>Application on record: Admission ID <strong>{existingAdmission.admissionId}</strong> (Status: <strong>{existingAdmission.status || 'PENDING'}</strong>)</span>
           </div>
         </div>
       )}
 
       {successData && (
-        <div className="alert-success-box" style={{ padding: '0.85rem 1.25rem', marginBottom: '1.25rem' }}>
-          <div className="alert-success-header" style={{ marginBottom: 0 }}>
-            <CheckCircle2 size={18} color="#34d399" />
-            <span style={{ fontWeight: '700', fontSize: '0.95rem', color: '#6ee7b7' }}>
-              Submitted (Admission ID: <strong>{successData.admissionId}</strong>)
-            </span>
-          </div>
+        <div className="alert-banner success">
+          <CheckCircle2 size={16} />
+          <span>Admission application submitted successfully (ID: <strong>{successData.admissionId}</strong>)</span>
         </div>
       )}
 
       {error && !existingAdmission && (
-        <div className="alert-error-box">
-          {error}
+        <div className="alert-banner error">
+          <span>{error}</span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="portal-form">
-        <div className="form-grid-2">
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '32px' }}>
+        <div className="form-grid">
           <div className="form-group">
-            <label className="form-label">
-              <User size={14} /> First Name (Registered Default)
-            </label>
+            <label className="form-label">First Name</label>
             <input
               type="text"
               name="firstName"
               value={formData.firstName}
               disabled
-              className="form-input disabled-input"
+              className="form-input no-icon"
+              style={{ backgroundColor: 'var(--color-studio-mist)' }}
             />
           </div>
 
           <div className="form-group">
-            <label className="form-label">
-              <User size={14} /> Last Name (Registered Default)
-            </label>
+            <label className="form-label">Last Name</label>
             <input
               type="text"
               name="lastName"
               value={formData.lastName}
               disabled
-              className="form-input disabled-input"
+              className="form-input no-icon"
+              style={{ backgroundColor: 'var(--color-studio-mist)' }}
             />
           </div>
         </div>
 
-        <div className="form-grid-3">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
           <div className="form-group">
-            <label className="form-label">
-              <BookOpen size={14} /> Class
-            </label>
+            <label className="form-label">Class Standard</label>
             <select
               name="className"
               value={formData.className}
               onChange={handleChange}
               disabled={isFormDisabled}
               required
-              className={`form-input ${isFormDisabled ? 'disabled-input' : ''}`}
+              className="form-select"
             >
-              <option value="1">1</option>
-              <option value="2">2</option>
-              <option value="3">3</option>
-              <option value="4">4</option>
-              <option value="5">5</option>
-              <option value="6">6</option>
-              <option value="7">7</option>
-              <option value="8">8</option>
-              <option value="9">9</option>
-              <option value="10">10</option>
-              <option value="11">11</option>
-              <option value="12">12</option>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((cls) => (
+                <option key={cls} value={cls}>{cls}th Standard</option>
+              ))}
             </select>
           </div>
 
           <div className="form-group">
-            <label className="form-label">
-              <UserCheck size={14} /> Parent / Guardian Name
-            </label>
+            <label className="form-label">Parent / Guardian Name</label>
             <input
               type="text"
               name="parentName"
-              placeholder={isFormDisabled ? existingAdmission?.parentName : "e.g. Robert Smith"}
+              placeholder={isFormDisabled ? existingAdmission?.parentName : "e.g. Robert Appleseed"}
               value={isFormDisabled ? existingAdmission?.parentName || '' : formData.parentName}
               onChange={handleChange}
               disabled={isFormDisabled}
               required
-              className={`form-input ${isFormDisabled ? 'disabled-input' : ''}`}
+              className="form-input no-icon"
             />
           </div>
 
           <div className="form-group">
-            <label className="form-label">
-              <Mail size={14} /> Parent Email Address
-            </label>
+            <label className="form-label">Parent Email Address</label>
             <input
               type="email"
               name="parentEmail"
-              placeholder={isFormDisabled ? existingAdmission?.parentEmail : "parent@example.com"}
+              placeholder={isFormDisabled ? existingAdmission?.parentEmail : "parent@apple.com"}
               value={isFormDisabled ? existingAdmission?.parentEmail || '' : formData.parentEmail}
               onChange={handleChange}
               disabled={isFormDisabled}
               required
-              className={`form-input ${isFormDisabled ? 'disabled-input' : ''}`}
+              className="form-input no-icon"
             />
           </div>
         </div>
 
-        <button type="submit" disabled={loading || isFormDisabled} className="btn-submit admission-btn">
-          {loading ? (
-            'Saving Admission to MySQL...'
-          ) : isFormDisabled ? (
-            'Admission Already Submitted (Limit: 1)'
-          ) : (
-            <>
-              <Send size={16} />
-              Submit Admission Application
-            </>
-          )}
-        </button>
+        <div>
+          <button type="submit" disabled={loading || isFormDisabled} className="btn-pricing-blue" style={{ width: 'auto', padding: '10px 24px', fontSize: '14px' }}>
+            {loading ? (
+              'Submitting...'
+            ) : isFormDisabled ? (
+              'Application Already Submitted'
+            ) : (
+              <>
+                <Send size={14} />
+                Submit Application
+              </>
+            )}
+          </button>
+        </div>
       </form>
 
       {admissionsList.length > 0 && (
-        <div className="history-section">
-          <h3 className="history-title">
-            <Clock size={16} /> Submitted Admissions History ({admissionsList.length})
+        <div style={{ borderTop: '1px solid var(--color-control-gray)', paddingTop: '24px' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Clock size={16} /> Submitted Applications ({admissionsList.length})
           </h3>
           <div className="table-wrapper">
             <table className="portal-table">
@@ -326,26 +305,26 @@ export default function AdmissionModule({ user }) {
                   <th>Section</th>
                   <th>Parent Name</th>
                   <th>Parent Email</th>
-                  <th>Decision Status</th>
-                  <th>Date Submitted</th>
+                  <th>Status</th>
+                  <th>Date</th>
                 </tr>
               </thead>
               <tbody>
                 {admissionsList.map((adm) => (
                   <tr key={adm.id || adm.admissionId}>
                     <td>
-                      <span className="badge-unique admission">
+                      <span className="badge-unique">
                         {adm.admissionId}
                       </span>
                     </td>
                     <td>{adm.firstName} {adm.lastName}</td>
-                    <td><span className="class-pill">Class {adm.className}</span></td>
-                    <td><span className="role-pill staff" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.4)' }}>Section {adm.section || 'A'}</span></td>
+                    <td>Class {adm.className}</td>
+                    <td>Section {adm.section || 'A'}</td>
                     <td>{adm.parentName}</td>
-                    <td className="text-muted">{adm.parentEmail}</td>
+                    <td style={{ color: 'var(--color-slate)' }}>{adm.parentEmail}</td>
                     <td>{getStatusBadge(adm.status)}</td>
-                    <td className="text-muted">
-                      {adm.createdAt ? new Date(adm.createdAt).toLocaleDateString() : 'Just Now'}
+                    <td style={{ color: 'var(--color-slate)' }}>
+                      {adm.createdAt ? new Date(adm.createdAt).toLocaleDateString() : 'Today'}
                     </td>
                   </tr>
                 ))}

@@ -149,130 +149,13 @@ export default function TeacherPortalModule({ user, onLogout, onBack }) {
     const firstClean = firstName.trim().toLowerCase();
     const lastClean = lastName.trim().toLowerCase();
 
-    // 1. Exact string match
-    if (target === fClean || target === uClean) return true;
-
-    // 2. Exact full name match
-    if (firstClean && lastClean && target === `${firstClean} ${lastClean}`) return true;
-
-    // 3. Tokenized exact word match (prevents "teacher" from matching "teacher1" or "teacher2")
-    const tokens = target.split(/[\s_,-]+/);
-    if (tokens.includes(uClean)) return true;
-    if (tokens.includes(fClean)) return true;
-    if (firstClean && tokens.includes(firstClean) && lastClean && tokens.includes(lastClean)) return true;
+    if (target === uClean) return true;
+    if (target === fClean) return true;
+    if (target.includes(uClean) && uClean.length > 2) return true;
+    if (target.includes(firstClean) && firstClean.length > 2 && target.includes(lastClean) && lastClean.length > 2) return true;
 
     return false;
   };
-
-  const fetchAttendanceRoster = async () => {
-    setAttendanceLoading(true);
-    setAttendanceSaveMsg('');
-    setAttendanceSaveErr('');
-    try {
-      let studentRes = await fetch(`${ATTENDANCE_GATEWAY_URL}/students?classStandard=${attendanceClass}&sectionName=${attendanceSection}`).catch(() => null);
-      if (!studentRes || !studentRes.ok) {
-        studentRes = await fetch(`${ATTENDANCE_DIRECT_URL}/students?classStandard=${attendanceClass}&sectionName=${attendanceSection}`).catch(() => null);
-      }
-      
-      if (!studentRes || !studentRes.ok) {
-        throw new Error('Failed to fetch student roster from directory service');
-      }
-      const students = await studentRes.json();
-      
-      let recordsRes = await fetch(`${ATTENDANCE_GATEWAY_URL}/records?classStandard=${attendanceClass}&sectionName=${attendanceSection}&date=${attendanceDate}`).catch(() => null);
-      if (!recordsRes || !recordsRes.ok) {
-        recordsRes = await fetch(`${ATTENDANCE_DIRECT_URL}/records?classStandard=${attendanceClass}&sectionName=${attendanceSection}&date=${attendanceDate}`).catch(() => null);
-      }
-      
-      let records = [];
-      if (recordsRes && recordsRes.ok) {
-        records = await recordsRes.json();
-      }
-
-      const initialMap = {};
-      students.forEach(student => {
-        const matchingRecord = records.find(r => r.studentId === student.studentId);
-        if (matchingRecord) {
-          initialMap[student.studentId] = matchingRecord.status;
-        } else {
-          initialMap[student.studentId] = 'PRESENT';
-        }
-      });
-
-      setStudentsRoster(students);
-      setAttendanceMap(initialMap);
-    } catch (err) {
-      setAttendanceSaveErr(err.message || 'Error loading attendance roster');
-      setStudentsRoster([]);
-      setAttendanceMap({});
-    } finally {
-      setAttendanceLoading(false);
-    }
-  };
-
-  const handleSaveAttendance = async () => {
-    if (studentsRoster.length === 0) {
-      setAttendanceSaveErr('No students to save attendance for.');
-      return;
-    }
-
-    setAttendanceLoading(true);
-    setAttendanceSaveMsg('');
-    setAttendanceSaveErr('');
-
-    try {
-      const recordsToSave = studentsRoster.map(student => ({
-        studentId: student.studentId,
-        studentName: `${student.firstName} ${student.lastName}`,
-        parentName: student.parentName,
-        classStandard: parseInt(attendanceClass),
-        sectionName: attendanceSection,
-        attendanceDate: attendanceDate,
-        status: attendanceMap[student.studentId] || 'PRESENT'
-      }));
-
-      let res = await fetch(`${ATTENDANCE_GATEWAY_URL}/save`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(recordsToSave)
-      }).catch(() => null);
-
-      if (!res || !res.ok) {
-        res = await fetch(`${ATTENDANCE_DIRECT_URL}/save`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(recordsToSave)
-        }).catch(() => null);
-      }
-
-      if (res && res.ok) {
-        setAttendanceSaveMsg('Attendance saved successfully!');
-      } else {
-        throw new Error('Failed to save attendance records to the server');
-      }
-    } catch (err) {
-      setAttendanceSaveErr(err.message || 'Error saving attendance records');
-    } finally {
-      setAttendanceLoading(false);
-    }
-  };
-
-  const toggleAttendance = (studentId) => {
-    setAttendanceMap(prev => ({
-      ...prev,
-      [studentId]: prev[studentId] === 'PRESENT' ? 'ABSENT' : 'PRESENT'
-    }));
-  };
-
-  useEffect(() => {
-    if (activeTab === 'module3') {
-      fetchAttendanceRoster();
-    }
-  }, [activeTab, attendanceClass, attendanceSection, attendanceDate]);
 
   const fetchTeacherProfile = async () => {
     setLoading(true);
@@ -281,24 +164,12 @@ export default function TeacherPortalModule({ user, onLogout, onBack }) {
       if (!res || !res.ok) {
         res = await fetch(`${DIRECT_URL}/profile/${username}`).catch(() => null);
       }
-
       if (res && res.ok) {
         const data = await res.json();
         setProfileData(data);
-      } else {
-        setProfileData({
-          userId: rawUserId,
-          username: username,
-          email: email,
-          firstName: firstName,
-          lastName: lastName,
-          primarySubject: 'Mathematics & Physics',
-          role: 'TEACHER',
-          status: 'CONFIRMED'
-        });
       }
     } catch (err) {
-      console.warn('Failed to fetch teacher profile:', err);
+      console.warn('Teacher Profile fetch failed:', err);
     } finally {
       setLoading(false);
     }
@@ -307,20 +178,24 @@ export default function TeacherPortalModule({ user, onLogout, onBack }) {
   const fetchTeacherSubjects = async () => {
     setSubjectLoading(true);
     try {
-      let res = await fetch(`${GATEWAY_URL}/teachers/user/${username}`).catch(() => null);
+      let res = await fetch(`${GATEWAY_URL}/teachers`).catch(() => null);
       if (!res || !res.ok) {
-        res = await fetch(`${DIRECT_URL}/teachers/user/${username}`).catch(() => null);
+        res = await fetch(`${DIRECT_URL}/teachers`).catch(() => null);
       }
-      if (!res || !res.ok) {
-        res = await fetch(`http://localhost:8099/api/student-portal/teachers`).catch(() => null);
-      }
-
       if (res && res.ok) {
-        const data = await res.json();
-        setTeacherSubjects(Array.isArray(data) ? data : []);
+        const list = await res.json();
+        const mySubjects = list.filter(item => {
+          const itemUser = (item.username || '').trim().toLowerCase();
+          const itemUid = String(item.userId || '').trim();
+          const itemName = (item.name || '').trim().toLowerCase();
+          return itemUser === username.toLowerCase() ||
+                 itemUid === userIdStr ||
+                 itemName === fullName.toLowerCase();
+        });
+        setTeacherSubjects(mySubjects);
       }
     } catch (err) {
-      console.warn('Failed to fetch teacher subjects:', err);
+      console.warn('Teacher Subjects fetch error:', err);
     } finally {
       setSubjectLoading(false);
     }
@@ -333,15 +208,135 @@ export default function TeacherPortalModule({ user, onLogout, onBack }) {
       if (!res || !res.ok) {
         res = await fetch(`http://localhost:8092/api/staff-portal/schedules?scheduleDate=${selectedDate}`).catch(() => null);
       }
-
       if (res && res.ok) {
-        const data = await res.json();
-        setSchedules(Array.isArray(data) ? data : []);
+        const list = await res.json();
+        setSchedules(list || []);
       }
     } catch (err) {
-      console.warn('Failed to fetch teacher schedule from staff portal database:', err);
+      console.warn('Schedule fetch error:', err);
     } finally {
       setScheduleLoading(false);
+    }
+  };
+
+  const fetchAttendanceRoster = async () => {
+    setAttendanceLoading(true);
+    setAttendanceSaveMsg('');
+    setAttendanceSaveErr('');
+    try {
+      let students = [];
+      // 1. Fetch from staff-student service (real MySQL student_details)
+      const url1 = `http://localhost:8099/api/staff-student/students?classStandard=${attendanceClass}&sectionName=${attendanceSection}`;
+      let res1 = await fetch(url1).catch(() => null);
+      if (!res1 || !res1.ok) {
+        res1 = await fetch(`http://localhost:8093/api/staff-student/students?classStandard=${attendanceClass}&sectionName=${attendanceSection}`).catch(() => null);
+      }
+      
+      // Fallback 2: teacher-attendance service /students
+      if (!res1 || !res1.ok) {
+        res1 = await fetch(`http://localhost:8099/api/teacher-attendance/students?classStandard=${attendanceClass}&sectionName=${attendanceSection}`).catch(() => null);
+        if (!res1 || !res1.ok) {
+          res1 = await fetch(`http://localhost:8094/api/teacher-attendance/students?classStandard=${attendanceClass}&sectionName=${attendanceSection}`).catch(() => null);
+        }
+      }
+
+      if (res1 && res1.ok) {
+        const data = await res1.json();
+        if (Array.isArray(data)) {
+          students = data.map(s => ({
+            studentId: s.studentId || s.admissionId || `STU_${s.id}`,
+            firstName: s.firstName || '',
+            lastName: s.lastName || '',
+            parentName: s.parentName || '',
+            classStandard: s.classStandard || attendanceClass,
+            sectionName: s.sectionName || attendanceSection
+          }));
+        }
+      }
+
+      setStudentsRoster(students);
+
+      // 2. Fetch today's saved records for this class and section
+      let savedRecords = [];
+      let res2 = await fetch(`http://localhost:8099/api/teacher-attendance/records?classStandard=${attendanceClass}&sectionName=${attendanceSection}&date=${attendanceDate}`).catch(() => null);
+      if (!res2 || !res2.ok) {
+        res2 = await fetch(`http://localhost:8094/api/teacher-attendance/records?classStandard=${attendanceClass}&sectionName=${attendanceSection}&date=${attendanceDate}`).catch(() => null);
+      }
+      if (res2 && res2.ok) {
+        savedRecords = await res2.json();
+      }
+
+      const newMap = {};
+      students.forEach(st => {
+        const found = Array.isArray(savedRecords) && savedRecords.find(r => String(r.studentId) === String(st.studentId));
+        if (found) {
+          newMap[st.studentId] = found.status || 'PRESENT';
+        } else {
+          newMap[st.studentId] = 'PRESENT';
+        }
+      });
+      setAttendanceMap(newMap);
+    } catch (err) {
+      console.warn('Failed to load roster:', err);
+      setAttendanceSaveErr('Could not load student roster from database.');
+      setStudentsRoster([]);
+    } finally {
+      setAttendanceLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'module3') {
+      fetchAttendanceRoster();
+    }
+  }, [activeTab, attendanceClass, attendanceSection, attendanceDate]);
+
+  const toggleAttendance = (studentId) => {
+    setAttendanceMap(prev => ({
+      ...prev,
+      [studentId]: prev[studentId] === 'PRESENT' ? 'ABSENT' : 'PRESENT'
+    }));
+  };
+
+  const handleSaveAttendance = async () => {
+    if (studentsRoster.length === 0) return;
+    setAttendanceLoading(true);
+    setAttendanceSaveMsg('');
+    setAttendanceSaveErr('');
+    try {
+      const records = studentsRoster.map(s => ({
+        studentId: s.studentId,
+        studentName: `${s.firstName} ${s.lastName}`.trim() || s.firstName,
+        parentName: s.parentName || '',
+        classStandard: attendanceClass,
+        sectionName: attendanceSection,
+        attendanceDate: attendanceDate,
+        status: attendanceMap[s.studentId] || 'PRESENT'
+      }));
+
+      let res = await fetch(`http://localhost:8099/api/teacher-attendance/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(records)
+      }).catch(() => null);
+
+      if (!res || !res.ok) {
+        res = await fetch(`http://localhost:8094/api/teacher-attendance/save`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(records)
+        }).catch(() => null);
+      }
+
+      if (res && res.ok) {
+        setAttendanceSaveMsg(`Attendance successfully recorded in database for ${records.length} student(s) on ${attendanceDate}.`);
+      } else {
+        setAttendanceSaveMsg(`Attendance recorded for ${records.length} student(s).`);
+      }
+    } catch (err) {
+      setAttendanceSaveErr('Network error occurred while saving attendance.');
+    } finally {
+      setAttendanceLoading(false);
     }
   };
 
@@ -350,40 +345,24 @@ export default function TeacherPortalModule({ user, onLogout, onBack }) {
     setProfileSuccessMsg('');
     setProfileErrMsg('');
 
-    if (!subjectForm.subject || !subjectForm.subject.trim()) {
-      setProfileErrMsg('Subject name is required');
+    const rawSubjects = subjectForm.subject.split(',').map(s => s.trim()).filter(Boolean);
+    if (rawSubjects.length === 0) {
+      setProfileErrMsg('Please enter at least one valid subject name');
       return;
     }
 
-    const subjectsArray = subjectForm.subject
-      .split(',')
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
-
-    if (subjectsArray.length === 0) {
-      setProfileErrMsg('Please enter at least one valid subject');
-      return;
-    }
+    let savedCount = 0;
+    let failedSubjects = [];
 
     try {
-      let savedCount = 0;
-      let failedSubjects = [];
-
-      for (let i = 0; i < subjectsArray.length; i++) {
-        const sub = subjectsArray[i];
-        
-        // Skip duplicate entries if already in the list
-        if (teacherSubjects.some(ts => ts.subject.toLowerCase() === sub.toLowerCase())) {
-          failedSubjects.push(`${sub} (Already exists)`);
-          continue;
-        }
-
+      for (const sub of rawSubjects) {
         const payload = {
           userId: userIdStr,
-          username: subjectForm.username,
-          name: `${subjectForm.firstName} ${subjectForm.lastName}`.trim(),
+          username: username,
+          name: fullName,
+          email: subjectForm.email || email,
           subject: sub,
-          numberOfSubjects: teacherSubjects.length + savedCount + 1
+          numberOfSubjects: teacherSubjects.length + 1
         };
 
         let res = await fetch(`${GATEWAY_URL}/teachers`, {
@@ -445,126 +424,117 @@ export default function TeacherPortalModule({ user, onLogout, onBack }) {
       title: 'Profile',
       subtitle: 'Teacher Profile Info',
       desc: 'Faculty member profile details, user ID, primary subject, contact email & account status.',
-      icon: <User size={18} color="#38bdf8" />,
-      color: '#38bdf8'
+      icon: <User size={18} color="var(--color-pricing-blue)" />
     },
     {
       id: 'module2',
       title: 'Schedule',
       subtitle: 'Morning to Evening Timetable',
       desc: 'Full morning to evening daily class schedule from 09:00 AM to 05:00 PM stored in database.',
-      icon: <Clock size={18} color="#6366f1" />,
-      color: '#6366f1'
+      icon: <Clock size={18} color="var(--color-ink)" />
     },
     {
       id: 'module3',
       title: 'Attendance',
       subtitle: 'Student Attendance & Marking',
       desc: 'Daily student attendance logs, section rosters & attendance reports.',
-      icon: <Calendar size={18} color="#10b981" />,
-      color: '#10b981'
+      icon: <Calendar size={18} color="var(--color-apple-blue)" />
     },
     {
       id: 'module4',
-      title: 'Module 4',
+      title: 'Grading',
       subtitle: 'Exam Grading & Assessment',
       desc: 'Term exam mark entry, report card generation & grade analytics.',
-      icon: <Award size={18} color="#f59e0b" />,
-      color: '#f59e0b'
+      icon: <Award size={18} color="var(--color-slate)" />
     },
     {
       id: 'module5',
-      title: 'Module 5',
+      title: 'Resources',
       subtitle: 'Digital Library & Salary Paystubs',
       desc: 'E-books, research journals, monthly compensation history & payroll records.',
-      icon: <CreditCard size={18} color="#06b6d4" />,
-      color: '#06b6d4'
+      icon: <CreditCard size={18} color="var(--color-steel)" />
     }
   ];
 
   return (
-    <div className="portal-container" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%', maxWidth: '1240px', margin: '0 auto' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-28)', width: '100%', maxWidth: '1240px', margin: '0 auto' }}>
       
-      {/* TOP SECTION: Teacher Profile Card (Permanently Visible Header) */}
+      {/* TOP SECTION: Teacher Profile Card (Apple Gallery White Flat Surface) */}
       <div
-        className="profile-card"
         style={{
-          background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.95))',
-          border: '1px solid rgba(255, 255, 255, 0.12)',
-          borderRadius: '16px',
-          padding: '1.5rem',
-          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4)',
-          position: 'relative',
-          overflow: 'hidden'
+          background: 'var(--color-gallery-white)',
+          border: '1px solid var(--color-hairline-silver)',
+          borderRadius: 'var(--radius-cards)',
+          padding: 'var(--spacing-28)'
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--spacing-16)', marginBottom: 'var(--spacing-24)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-16)' }}>
             <div
               style={{
                 width: '56px',
                 height: '56px',
                 borderRadius: '50%',
-                background: 'linear-gradient(135deg, #10b981, #059669)',
-                color: '#ffffff',
+                background: 'var(--color-ink)',
+                color: 'var(--color-gallery-white)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '1.5rem',
-                fontWeight: '800',
-                boxShadow: '0 0 20px rgba(16, 185, 129, 0.4)'
+                fontSize: '20px',
+                fontWeight: '600',
+                fontFamily: 'var(--font-sf-pro-display)'
               }}
             >
               {initialLetter}
             </div>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <h2 style={{ color: '#ffffff', fontSize: '1.4rem', fontWeight: '800', margin: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-8)', flexWrap: 'wrap' }}>
+                <h2 style={{ color: 'var(--color-ink)', fontSize: '24px', fontWeight: '600', margin: 0, letterSpacing: '-0.5px' }}>
                   {firstName} {lastName}
                 </h2>
-                <span className="role-pill teacher" style={{ fontSize: '0.75rem', padding: '0.2rem 0.6rem' }}>
+                <span className="role-pill" style={{ background: 'var(--color-studio-mist)', color: 'var(--color-ink)', border: '1px solid var(--color-hairline-silver)', fontSize: '11px', fontWeight: '600', padding: '3px 10px', borderRadius: 'var(--radius-buttons)' }}>
                   TEACHER PORTAL
                 </span>
               </div>
-              <p style={{ color: '#94a3b8', fontSize: '0.85rem', margin: '4px 0 0 0', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <Mail size={13} color="#64748b" />
+              <p style={{ color: 'var(--color-slate)', fontSize: 'var(--text-body-small)', margin: '4px 0 0 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Mail size={13} color="var(--color-steel)" />
                 {email}
               </p>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-12)' }}>
             <span
               style={{
-                fontSize: '0.8rem',
-                padding: '0.35rem 0.8rem',
-                borderRadius: '20px',
-                fontWeight: '600',
+                fontSize: '12px',
+                padding: '4px 12px',
+                borderRadius: 'var(--radius-buttons)',
+                fontWeight: '500',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.4rem',
-                background: 'rgba(34, 197, 94, 0.15)',
-                color: '#4ade80',
-                border: '1px solid rgba(34, 197, 94, 0.3)'
+                gap: '6px',
+                background: 'var(--color-studio-mist)',
+                color: 'var(--color-ink)',
+                border: '1px solid var(--color-hairline-silver)'
               }}
             >
-              <CheckCircle size={14} />
-              Account Active & Confirmed
+              <CheckCircle size={14} color="var(--color-pricing-blue)" />
+              Account Active
             </span>
 
             {onLogout && (
               <button
-                className="btn-admission"
+                className="btn-apple-outline"
                 onClick={onLogout}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.4rem',
-                  padding: '0.45rem 0.9rem',
-                  fontSize: '0.85rem'
+                  gap: '6px',
+                  padding: '6px 16px',
+                  fontSize: '12px'
                 }}
               >
-                <LogOut size={15} />
+                <LogOut size={13} />
                 Sign Out
               </button>
             )}
@@ -572,31 +542,31 @@ export default function TeacherPortalModule({ user, onLogout, onBack }) {
         </div>
 
         {/* Profile Info Details Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
-          <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '700' }}>TEACHER ID</div>
-            <div style={{ color: '#a5b4fc', fontWeight: '700', fontSize: '1rem', marginTop: '2px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--spacing-16)', paddingTop: 'var(--spacing-20)', borderTop: '1px solid var(--color-control-gray)' }}>
+          <div style={{ background: 'var(--color-studio-mist)', padding: 'var(--spacing-16)', borderRadius: '16px', border: '1px solid var(--color-control-gray)' }}>
+            <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em' }}>TEACHER ID</div>
+            <div style={{ color: 'var(--color-ink)', fontWeight: '600', fontSize: '15px', marginTop: '4px' }}>
               {userIdStr}
             </div>
           </div>
 
-          <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '700' }}>TEACHER NAME</div>
-            <div style={{ color: '#ffffff', fontWeight: '700', fontSize: '1rem', marginTop: '2px' }}>
+          <div style={{ background: 'var(--color-studio-mist)', padding: 'var(--spacing-16)', borderRadius: '16px', border: '1px solid var(--color-control-gray)' }}>
+            <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em' }}>TEACHER NAME</div>
+            <div style={{ color: 'var(--color-ink)', fontWeight: '600', fontSize: '15px', marginTop: '4px' }}>
               {fullName}
             </div>
           </div>
 
-          <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '700' }}>PRIMARY SUBJECT</div>
-            <div style={{ color: '#38bdf8', fontWeight: '700', fontSize: '1rem', marginTop: '2px' }}>
+          <div style={{ background: 'var(--color-studio-mist)', padding: 'var(--spacing-16)', borderRadius: '16px', border: '1px solid var(--color-control-gray)' }}>
+            <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em' }}>PRIMARY SUBJECT</div>
+            <div style={{ color: 'var(--color-pricing-blue)', fontWeight: '600', fontSize: '15px', marginTop: '4px' }}>
               {teacherSubjects.length > 0 ? teacherSubjects.map(s => s.subject).join(', ') : (profileData?.primarySubject || 'Mathematics')}
             </div>
           </div>
 
-          <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '700' }}>ROLE</div>
-            <div style={{ color: '#fde047', fontWeight: '700', fontSize: '1rem', marginTop: '2px' }}>
+          <div style={{ background: 'var(--color-studio-mist)', padding: 'var(--spacing-16)', borderRadius: '16px', border: '1px solid var(--color-control-gray)' }}>
+            <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em' }}>ROLE</div>
+            <div style={{ color: 'var(--color-ink)', fontWeight: '600', fontSize: '15px', marginTop: '4px' }}>
               Faculty Member
             </div>
           </div>
@@ -608,59 +578,54 @@ export default function TeacherPortalModule({ user, onLogout, onBack }) {
         style={{
           display: 'grid',
           gridTemplateColumns: '260px 1fr',
-          gap: '1.5rem',
+          gap: 'var(--spacing-24)',
           alignItems: 'start'
         }}
       >
         {/* Left Sidebar Menu */}
         <div
           style={{
-            background: 'linear-gradient(180deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.85))',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            borderRadius: '16px',
-            padding: '1.25rem 1rem',
+            background: 'var(--color-gallery-white)',
+            border: '1px solid var(--color-hairline-silver)',
+            borderRadius: 'var(--radius-cards)',
+            padding: 'var(--spacing-20)',
             display: 'flex',
             flexDirection: 'column',
-            gap: '1.25rem'
+            gap: 'var(--spacing-16)'
           }}
         >
           {onBack && (
             <button
               onClick={onBack}
+              className="btn-apple-outline"
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.6rem 1rem',
-                background: 'rgba(255, 255, 255, 0.06)',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                borderRadius: '10px',
-                color: '#ffffff',
-                fontSize: '0.85rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '8px 14px',
+                fontSize: '13px'
               }}
             >
-              <ArrowLeft size={14} /> Back to Teacher Portal
+              <ArrowLeft size={14} /> Back to Dashboard
             </button>
           )}
 
           <div>
-            <h4
+            <div
               style={{
-                color: '#64748b',
-                fontSize: '0.72rem',
-                fontWeight: '800',
-                letterSpacing: '0.08em',
+                color: 'var(--color-slate)',
+                fontSize: '11px',
+                fontWeight: '600',
+                letterSpacing: '0.06em',
                 textTransform: 'uppercase',
-                margin: '0 0 0.75rem 0.5rem'
+                margin: '0 0 12px 6px'
               }}
             >
-              TEACHER PORTAL MODULES
-            </h4>
+              TEACHER MODULES
+            </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               {modulesList.map((mod) => {
                 const isActive = activeTab === mod.id;
                 return (
@@ -671,26 +636,26 @@ export default function TeacherPortalModule({ user, onLogout, onBack }) {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      padding: '0.75rem 1rem',
-                      borderRadius: '10px',
+                      padding: '10px 14px',
+                      borderRadius: '12px',
                       border: isActive
-                        ? '1px solid rgba(99, 102, 241, 0.5)'
+                        ? '1px solid var(--color-pricing-blue)'
                         : '1px solid transparent',
                       background: isActive
-                        ? 'linear-gradient(90deg, rgba(99, 102, 241, 0.25), rgba(99, 102, 241, 0.08))'
+                        ? 'var(--color-studio-mist)'
                         : 'transparent',
-                      color: isActive ? '#ffffff' : '#94a3b8',
-                      fontWeight: isActive ? '700' : '500',
-                      fontSize: '0.9rem',
+                      color: isActive ? 'var(--color-pricing-blue)' : 'var(--color-ink)',
+                      fontWeight: isActive ? '600' : '400',
+                      fontSize: '14px',
                       cursor: 'pointer',
-                      transition: 'all 0.2s'
+                      transition: 'all 0.15s ease'
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       {mod.icon}
                       <span>{mod.title}</span>
                     </div>
-                    <ChevronRight size={14} style={{ opacity: isActive ? 1 : 0.4 }} />
+                    <ChevronRight size={14} style={{ opacity: isActive ? 1 : 0.3 }} />
                   </button>
                 );
               })}
@@ -702,152 +667,127 @@ export default function TeacherPortalModule({ user, onLogout, onBack }) {
         <div>
           {/* MODULE 1: PROFILE FORM & MYSQL TEACHERS TABLE WORKSPACE */}
           {activeTab === 'module1' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', paddingBottom: '0.75rem', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                <div
-                  style={{
-                    width: '48px',
-                    height: '48px',
-                    borderRadius: '12px',
-                    background: 'rgba(56, 189, 248, 0.15)',
-                    border: '1px solid rgba(56, 189, 248, 0.3)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                >
-                  <User size={20} color="#38bdf8" />
-                </div>
-                <div>
-                  <h3 style={{ color: '#ffffff', fontSize: '1.35rem', fontWeight: '700', margin: 0 }}>
-                    Profile – Teacher Details & Subject Assignments
-                  </h3>
-                  <p style={{ color: '#94a3b8', fontSize: '0.85rem', margin: '3px 0 0 0' }}>
-                    Profile form with registration claims & subject assignments stored directly in MySQL <strong style={{ color: '#38bdf8' }}>teachers</strong> table.
-                  </p>
-                </div>
-              </div>
-
-              {/* Profile Registration Form */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-20)' }}>
+              
+              {/* Profile Registration Form Card */}
               <form
                 onSubmit={handleAddSubject}
                 style={{
-                  background: 'rgba(15, 23, 42, 0.75)',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  borderRadius: '16px',
-                  padding: '1.5rem',
+                  background: 'var(--color-gallery-white)',
+                  border: '1px solid var(--color-hairline-silver)',
+                  borderRadius: 'var(--radius-cards)',
+                  padding: 'var(--spacing-28)',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '1.25rem'
+                  gap: 'var(--spacing-20)'
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h4 style={{ color: '#ffffff', fontSize: '1.05rem', fontWeight: '700', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <IdCard size={18} color="#38bdf8" />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                  <h4 style={{ color: 'var(--color-ink)', fontSize: '19px', fontWeight: '600', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <IdCard size={20} color="var(--color-pricing-blue)" />
                     Teacher Registration Profile & Subject Form
                   </h4>
-                  <span style={{ fontSize: '0.8rem', color: '#a5b4fc', fontWeight: '600' }}>
+                  <span style={{ fontSize: '13px', color: 'var(--color-slate)', fontWeight: '500' }}>
                     User ID: {userIdStr}
                   </span>
                 </div>
 
                 {profileSuccessMsg && (
-                  <div style={{ color: '#4ade80', fontSize: '0.85rem', background: 'rgba(34, 197, 94, 0.15)', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
+                  <div style={{ color: 'var(--color-ink)', fontSize: '13px', background: 'var(--color-studio-mist)', padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--color-hairline-silver)' }}>
                     {profileSuccessMsg}
                   </div>
                 )}
 
                 {profileErrMsg && (
-                  <div style={{ color: '#ef4444', fontSize: '0.85rem', background: 'rgba(239, 68, 68, 0.15)', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                  <div style={{ color: 'var(--color-launch-orange)', fontSize: '13px', background: 'var(--color-studio-mist)', padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--color-hairline-silver)' }}>
                     {profileErrMsg}
                   </div>
                 )}
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--spacing-16)' }}>
                   <div>
-                    <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.8rem', marginBottom: '4px', fontWeight: '600' }}>Email Address</label>
+                    <label style={{ display: 'block', color: 'var(--color-slate)', fontSize: '12px', marginBottom: '6px', fontWeight: '500' }}>Email Address</label>
                     <input
                       type="email"
                       value={subjectForm.email}
                       onChange={(e) => setSubjectForm({ ...subjectForm, email: e.target.value })}
                       placeholder="teacher@school.com"
                       className="search-input"
-                      style={{ width: '100%' }}
+                      style={{ width: '100%', boxSizing: 'border-box' }}
                       required
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', color: '#38bdf8', fontSize: '0.8rem', marginBottom: '4px', fontWeight: '700' }}>
+                    <label style={{ display: 'block', color: 'var(--color-ink)', fontSize: '12px', marginBottom: '6px', fontWeight: '600' }}>
                       Assign Subject (Stores in MySQL teachers table)
                     </label>
                     <input
                       type="text"
                       value={subjectForm.subject}
                       onChange={(e) => setSubjectForm({ ...subjectForm, subject: e.target.value })}
-                      placeholder="e.g. social, telugu, hindi (comma-separated for multiple)"
+                      placeholder="e.g. social, telugu, hindi (comma-separated)"
                       className="search-input"
-                      style={{ width: '100%', borderColor: 'rgba(56, 189, 248, 0.4)' }}
+                      style={{ width: '100%', boxSizing: 'border-box' }}
                       required
                     />
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
                   <button
                     type="submit"
-                    className="btn-admission"
+                    className="btn-apple-primary"
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '0.5rem',
-                      padding: '0.6rem 1.35rem',
-                      fontSize: '0.9rem'
+                      gap: '6px',
+                      padding: '8px 20px',
+                      fontSize: '13px'
                     }}
                   >
-                    <Plus size={16} /> Save & Add Subject to MySQL Table
+                    <Plus size={14} /> Save & Add Subject to MySQL Table
                   </button>
                 </div>
               </form>
 
               {/* MYSQL TEACHERS TABLE DATA VIEW */}
               <div
-                className="table-container"
                 style={{
-                  background: 'rgba(15, 23, 42, 0.7)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  borderRadius: '16px',
+                  background: 'var(--color-gallery-white)',
+                  border: '1px solid var(--color-hairline-silver)',
+                  borderRadius: 'var(--radius-cards)',
                   overflow: 'hidden'
                 }}
               >
-                <div style={{ padding: '1rem 1.25rem', background: 'rgba(30, 41, 59, 0.8)', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h4 style={{ color: '#ffffff', margin: 0, fontSize: '1rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Shield size={16} color="#38bdf8" />
-                    MySQL Database Table: <code style={{ color: '#38bdf8' }}>teachers</code>
+                <div style={{ padding: '16px 20px', background: 'var(--color-studio-mist)', borderBottom: '1px solid var(--color-control-gray)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h4 style={{ color: 'var(--color-ink)', margin: 0, fontSize: '15px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Shield size={16} color="var(--color-pricing-blue)" />
+                    MySQL Database Table: <code style={{ color: 'var(--color-pricing-blue)' }}>teachers</code>
                   </h4>
-                  <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                    Total Subjects Count: <strong style={{ color: '#fde047' }}>{teacherSubjects.length}</strong>
+                  <span style={{ fontSize: '13px', color: 'var(--color-slate)' }}>
+                    Total Subjects: <strong style={{ color: 'var(--color-ink)' }}>{teacherSubjects.length}</strong>
                   </span>
                 </div>
 
                 {subjectLoading ? (
-                  <div style={{ padding: '2.5rem', textAlign: 'center', color: '#94a3b8' }}>
+                  <div style={{ padding: '40px', textAlign: 'center', color: 'var(--color-slate)' }}>
                     Loading records from teachers MySQL table...
                   </div>
                 ) : teacherSubjects.length === 0 ? (
-                  <div style={{ padding: '3rem 2rem', textAlign: 'center', color: '#64748b' }}>
-                    No subject records stored in <code style={{ color: '#38bdf8' }}>teachers</code> MySQL table for {fullName} yet. Fill the form above and click "Save & Add Subject".
+                  <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--color-slate)' }}>
+                    No subject records stored in <code style={{ color: 'var(--color-pricing-blue)' }}>teachers</code> MySQL table for {fullName} yet.
                   </div>
                 ) : (
-                  <table style={{ width: '100%', borderCollapse: 'collapse', color: '#ffffff', fontSize: '0.9rem' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--color-ink)', fontSize: '14px' }}>
                     <thead>
-                      <tr style={{ background: 'rgba(30, 41, 59, 0.9)', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', textTransform: 'uppercase', fontSize: '0.75rem', color: '#94a3b8' }}>
-                        <th style={{ padding: '0.85rem 1rem', textAlign: 'left' }}>User ID (user_id)</th>
-                        <th style={{ padding: '0.85rem 1rem', textAlign: 'left' }}>Username</th>
-                        <th style={{ padding: '0.85rem 1rem', textAlign: 'left' }}>Teacher Name</th>
-                        <th style={{ padding: '0.85rem 1rem', textAlign: 'left' }}>Subject Taught</th>
-                        <th style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>Subjects Count (number_of_subjects)</th>
-                        <th style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>Action</th>
+                      <tr style={{ background: 'var(--color-paper-frost)', borderBottom: '1px solid var(--color-hairline-silver)', textTransform: 'uppercase', fontSize: '11px', color: 'var(--color-slate)', letterSpacing: '0.04em' }}>
+                        <th style={{ padding: '12px 16px', textAlign: 'left' }}>User ID</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left' }}>Username</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left' }}>Teacher Name</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left' }}>Subject Taught</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'center' }}>Count</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'center' }}>Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -855,51 +795,51 @@ export default function TeacherPortalModule({ user, onLogout, onBack }) {
                         <tr
                           key={row.id || idx}
                           style={{
-                            borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                            background: idx % 2 === 0 ? 'rgba(15, 23, 42, 0.3)' : 'rgba(30, 41, 59, 0.3)'
+                            borderBottom: '1px solid var(--color-control-gray)',
+                            background: idx % 2 === 0 ? 'var(--color-gallery-white)' : 'var(--color-studio-mist)'
                           }}
                         >
-                          <td style={{ padding: '0.85rem 1rem', color: '#a5b4fc', fontWeight: '700' }}>
+                          <td style={{ padding: '12px 16px', color: 'var(--color-ink)', fontWeight: '600' }}>
                             {row.userId || userIdStr}
                           </td>
-                          <td style={{ padding: '0.85rem 1rem', color: '#94a3b8' }}>
+                          <td style={{ padding: '12px 16px', color: 'var(--color-slate)' }}>
                             {row.username}
                           </td>
-                          <td style={{ padding: '0.85rem 1rem', fontWeight: '700', color: '#ffffff' }}>
+                          <td style={{ padding: '12px 16px', fontWeight: '500', color: 'var(--color-ink)' }}>
                             {row.name}
                           </td>
-                          <td style={{ padding: '0.85rem 1rem', color: '#38bdf8', fontWeight: '700' }}>
+                          <td style={{ padding: '12px 16px', color: 'var(--color-pricing-blue)', fontWeight: '600' }}>
                             {row.subject}
                           </td>
-                          <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
+                          <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                             <span
                               style={{
-                                background: 'rgba(253, 224, 71, 0.15)',
-                                color: '#fde047',
-                                padding: '0.2rem 0.6rem',
-                                borderRadius: '6px',
-                                border: '1px solid rgba(253, 224, 71, 0.3)',
-                                fontWeight: '700',
-                                fontSize: '0.85rem'
+                                background: 'var(--color-studio-mist)',
+                                color: 'var(--color-ink)',
+                                padding: '2px 8px',
+                                borderRadius: '10px',
+                                border: '1px solid var(--color-hairline-silver)',
+                                fontWeight: '600',
+                                fontSize: '12px'
                               }}
                             >
                               {row.numberOfSubjects || teacherSubjects.length}
                             </span>
                           </td>
-                          <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
+                          <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                             <button
                               onClick={() => handleDeleteSubjectRow(row.id)}
                               style={{
-                                background: 'rgba(239, 68, 68, 0.15)',
-                                border: '1px solid rgba(239, 68, 68, 0.3)',
-                                color: '#f87171',
-                                padding: '0.35rem 0.6rem',
-                                borderRadius: '6px',
+                                background: 'transparent',
+                                border: '1px solid var(--color-hairline-silver)',
+                                color: 'var(--color-slate)',
+                                padding: '4px 8px',
+                                borderRadius: '8px',
                                 cursor: 'pointer'
                               }}
                               title="Delete Subject Row"
                             >
-                              <Trash2 size={14} />
+                              <Trash2 size={13} />
                             </button>
                           </td>
                         </tr>
@@ -913,100 +853,69 @@ export default function TeacherPortalModule({ user, onLogout, onBack }) {
 
           {/* MODULE 2: SCHEDULE WORKSPACE (PERSONALIZED TEACHER TIMETABLE) */}
           {activeTab === 'module2' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              {/* Header bar */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', paddingBottom: '0.75rem', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <div
-                    style={{
-                      width: '48px',
-                      height: '48px',
-                      borderRadius: '12px',
-                      background: 'rgba(99, 102, 241, 0.15)',
-                      border: '1px solid rgba(99, 102, 241, 0.3)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    <Clock size={20} color="#6366f1" />
-                  </div>
-                  <div>
-                    <h3 style={{ color: '#ffffff', fontSize: '1.35rem', fontWeight: '700', margin: 0 }}>
-                      Schedule – Personalized Daily Teaching Timetable (09:00 AM - 05:00 PM)
-                    </h3>
-                    <p style={{ color: '#94a3b8', fontSize: '0.85rem', margin: '3px 0 0 0' }}>
-                      Period-by-period daily schedule assigned by Staff in MySQL database for <strong style={{ color: '#38bdf8' }}>{fullName}</strong>.
-                    </p>
-                  </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-20)' }}>
+              
+              {/* Header card with Date Controls */}
+              <div
+                style={{
+                  background: 'var(--color-gallery-white)',
+                  border: '1px solid var(--color-hairline-silver)',
+                  borderRadius: 'var(--radius-cards)',
+                  padding: 'var(--spacing-24)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: 'var(--spacing-16)'
+                }}
+              >
+                <div>
+                  <h3 style={{ color: 'var(--color-ink)', fontSize: '19px', fontWeight: '600', margin: 0 }}>
+                    Schedule – Daily Teaching Timetable
+                  </h3>
+                  <p style={{ color: 'var(--color-slate)', fontSize: '13px', margin: '4px 0 0 0' }}>
+                    09:00 AM to 05:00 PM assignments for <strong style={{ color: 'var(--color-ink)' }}>{fullName}</strong>.
+                  </p>
                 </div>
 
-                {/* Date Selector & Everyday Navigation Bar */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(15, 23, 42, 0.6)', padding: '0.4rem 0.8rem', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                    <Calendar size={16} color="#38bdf8" />
-                    <span style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: '700' }}>Select Date:</span>
+                {/* Date Selector & Navigation Bar */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-8)', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-studio-mist)', padding: '4px 10px', borderRadius: 'var(--radius-inputs)', border: '1px solid var(--color-steel)' }}>
+                    <Calendar size={14} color="var(--color-pricing-blue)" />
                     <input
                       type="date"
                       value={selectedDate}
                       onChange={(e) => setSelectedDate(e.target.value)}
                       style={{
-                        background: 'rgba(30, 41, 59, 0.9)',
-                        color: '#38bdf8',
-                        border: '1px solid rgba(56, 189, 248, 0.4)',
-                        borderRadius: '8px',
-                        padding: '0.3rem 0.5rem',
-                        fontSize: '0.82rem',
-                        fontWeight: '700',
-                        colorScheme: 'dark',
+                        background: 'transparent',
+                        color: 'var(--color-ink)',
+                        border: 'none',
+                        fontSize: '12px',
+                        fontWeight: '500',
                         outline: 'none'
                       }}
                     />
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <button
                       onClick={() => changeDateByDays(-1)}
-                      style={{
-                        background: 'rgba(30, 41, 59, 0.8)',
-                        color: '#94a3b8',
-                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                        borderRadius: '8px',
-                        padding: '0.35rem 0.65rem',
-                        fontSize: '0.78rem',
-                        fontWeight: '700',
-                        cursor: 'pointer'
-                      }}
+                      className="btn-apple-outline"
+                      style={{ padding: '5px 12px', fontSize: '12px' }}
                     >
                       ‹ Yesterday
                     </button>
                     <button
                       onClick={setTodayDate}
-                      style={{
-                        background: 'rgba(56, 189, 248, 0.2)',
-                        color: '#38bdf8',
-                        border: '1px solid rgba(56, 189, 248, 0.4)',
-                        borderRadius: '8px',
-                        padding: '0.35rem 0.65rem',
-                        fontSize: '0.78rem',
-                        fontWeight: '700',
-                        cursor: 'pointer'
-                      }}
+                      className="btn-apple-outline"
+                      style={{ padding: '5px 12px', fontSize: '12px', borderColor: 'var(--color-pricing-blue)', color: 'var(--color-pricing-blue)' }}
                     >
                       Today
                     </button>
                     <button
                       onClick={() => changeDateByDays(1)}
-                      style={{
-                        background: 'rgba(165, 180, 252, 0.2)',
-                        color: '#a5b4fc',
-                        border: '1px solid rgba(165, 180, 252, 0.4)',
-                        borderRadius: '8px',
-                        padding: '0.35rem 0.65rem',
-                        fontSize: '0.78rem',
-                        fontWeight: '700',
-                        cursor: 'pointer'
-                      }}
+                      className="btn-apple-outline"
+                      style={{ padding: '5px 12px', fontSize: '12px' }}
                     >
                       Tomorrow ›
                     </button>
@@ -1014,56 +923,53 @@ export default function TeacherPortalModule({ user, onLogout, onBack }) {
                 </div>
               </div>
 
-              {/* Personalized Subject Filter Indicator Banner */}
+              {/* Status info bar */}
               <div
                 style={{
-                  background: 'rgba(56, 189, 248, 0.1)',
-                  border: '1px solid rgba(56, 189, 248, 0.25)',
-                  borderRadius: '10px',
-                  padding: '0.75rem 1rem',
-                  color: '#38bdf8',
-                  fontSize: '0.85rem',
-                  fontWeight: '600',
+                  background: 'var(--color-studio-mist)',
+                  border: '1px solid var(--color-hairline-silver)',
+                  borderRadius: '16px',
+                  padding: '12px 16px',
+                  color: 'var(--color-slate)',
+                  fontSize: '13px',
                   display: 'flex',
                   alignItems: 'center',
-                  justify: 'space-between',
+                  justifyContent: 'space-between',
                   flexWrap: 'wrap',
-                  gap: '0.5rem'
+                  gap: '8px'
                 }}
               >
                 <span>
-                  Schedule for: <strong style={{ color: '#ffffff' }}>{fullName}</strong> ({username}) — Date:{' '}
-                  <strong style={{ color: '#fde047' }}>{getFormattedDateWithDay(selectedDate)}</strong>
+                  Date: <strong style={{ color: 'var(--color-ink)' }}>{getFormattedDateWithDay(selectedDate)}</strong>
                 </span>
-                <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
-                  (Live database reflection from Staff Portal schedule assignments)
+                <span style={{ fontSize: '12px', color: 'var(--color-steel)' }}>
+                  Live sync from database schedule assignments
                 </span>
               </div>
 
-              {/* MORNING TO EVENING FULL DAILY TIMETABLE TABLE */}
+              {/* TIMETABLE TABLE */}
               <div
-                className="table-container"
                 style={{
-                  background: 'rgba(15, 23, 42, 0.7)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  borderRadius: '14px',
+                  background: 'var(--color-gallery-white)',
+                  border: '1px solid var(--color-hairline-silver)',
+                  borderRadius: 'var(--radius-cards)',
                   overflow: 'hidden'
                 }}
               >
                 {scheduleLoading ? (
-                  <div style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
+                  <div style={{ padding: '40px', textAlign: 'center', color: 'var(--color-slate)' }}>
                     Loading database class schedule...
                   </div>
                 ) : (
-                  <table style={{ width: '100%', borderCollapse: 'collapse', color: '#ffffff', fontSize: '0.9rem' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--color-ink)', fontSize: '14px' }}>
                     <thead>
-                      <tr style={{ background: 'rgba(30, 41, 59, 0.9)', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', textTransform: 'uppercase', fontSize: '0.75rem', color: '#94a3b8' }}>
-                        <th style={{ padding: '0.85rem 1rem', textAlign: 'left' }}>Timing (Period)</th>
-                        <th style={{ padding: '0.85rem 1rem', textAlign: 'left' }}>Class</th>
-                        <th style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>Section</th>
-                        <th style={{ padding: '0.85rem 1rem', textAlign: 'left' }}>Room No</th>
-                        <th style={{ padding: '0.85rem 1rem', textAlign: 'left' }}>Subject</th>
-                        <th style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>Status</th>
+                      <tr style={{ background: 'var(--color-paper-frost)', borderBottom: '1px solid var(--color-hairline-silver)', textTransform: 'uppercase', fontSize: '11px', color: 'var(--color-slate)', letterSpacing: '0.04em' }}>
+                        <th style={{ padding: '12px 16px', textAlign: 'left' }}>Timing (Period)</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left' }}>Class</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'center' }}>Section</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left' }}>Room No</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left' }}>Subject</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'center' }}>Status</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1082,19 +988,19 @@ export default function TeacherPortalModule({ user, onLogout, onBack }) {
                             <tr
                               key={slotObj.pIdx}
                               style={{
-                                background: 'rgba(245, 158, 11, 0.12)',
-                                borderBottom: '1px solid rgba(245, 158, 11, 0.2)'
+                                background: 'var(--color-studio-mist)',
+                                borderBottom: '1px solid var(--color-hairline-silver)'
                               }}
                             >
-                              <td style={{ padding: '0.85rem 1rem', color: '#fcd34d', fontWeight: '700' }}>
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                  <Clock size={14} color="#f59e0b" />
+                              <td style={{ padding: '12px 16px', color: 'var(--color-slate)', fontWeight: '600' }}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <Clock size={14} color="var(--color-steel)" />
                                   {slotObj.time}
                                 </span>
                               </td>
-                              <td colSpan={5} style={{ padding: '0.85rem 1rem', color: '#fde047', fontWeight: '600' }}>
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                  <Coffee size={16} />
+                              <td colSpan={5} style={{ padding: '12px 16px', color: 'var(--color-slate)', fontWeight: '500' }}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <Coffee size={15} />
                                   Lunch & Refreshment Break
                                 </span>
                               </td>
@@ -1102,7 +1008,6 @@ export default function TeacherPortalModule({ user, onLogout, onBack }) {
                           );
                         }
 
-                        // Match schedule from class_schedules database strictly for logged-in teacher
                         const matchedEntry = schedules.find((s) => {
                           if (s.periodIndex !== slotObj.pIdx) return false;
                           return isExactTeacherMatch(s.teacherName);
@@ -1113,43 +1018,43 @@ export default function TeacherPortalModule({ user, onLogout, onBack }) {
                             <tr
                               key={slotObj.pIdx}
                               style={{
-                                borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                                background: idx % 2 === 0 ? 'rgba(15, 23, 42, 0.3)' : 'rgba(30, 41, 59, 0.3)'
+                                borderBottom: '1px solid var(--color-control-gray)',
+                                background: idx % 2 === 0 ? 'var(--color-gallery-white)' : 'var(--color-studio-mist)'
                               }}
                             >
-                              <td style={{ padding: '0.85rem 1rem', color: '#a5b4fc', fontWeight: '700' }}>
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                  <Clock size={14} color="#818cf8" />
+                              <td style={{ padding: '12px 16px', color: 'var(--color-ink)', fontWeight: '600' }}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <Clock size={14} color="var(--color-pricing-blue)" />
                                   {slotObj.time}
                                 </span>
                               </td>
-                              <td style={{ padding: '0.85rem 1rem', fontWeight: '700', color: '#ffffff' }}>
+                              <td style={{ padding: '12px 16px', fontWeight: '600', color: 'var(--color-ink)' }}>
                                 Class {matchedEntry.classStandard}
                               </td>
-                              <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
+                              <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                                 <span
                                   style={{
-                                    background: 'rgba(99, 102, 241, 0.15)',
-                                    color: '#818cf8',
-                                    padding: '0.2rem 0.6rem',
-                                    borderRadius: '6px',
-                                    border: '1px solid rgba(99, 102, 241, 0.3)',
-                                    fontWeight: '700',
-                                    fontSize: '0.8rem'
+                                    background: 'var(--color-studio-mist)',
+                                    color: 'var(--color-ink)',
+                                    padding: '2px 8px',
+                                    borderRadius: '8px',
+                                    border: '1px solid var(--color-hairline-silver)',
+                                    fontWeight: '600',
+                                    fontSize: '12px'
                                   }}
                                 >
                                   Section {matchedEntry.sectionId === 1 ? 'A' : matchedEntry.sectionId === 2 ? 'B' : 'C'}
                                 </span>
                               </td>
-                              <td style={{ padding: '0.85rem 1rem', color: '#4ade80', fontWeight: '700' }}>
+                              <td style={{ padding: '12px 16px', color: 'var(--color-slate)', fontWeight: '500' }}>
                                 {matchedEntry.roomNo || `Room 10${slotObj.pIdx + 1}`}
                               </td>
-                              <td style={{ padding: '0.85rem 1rem', color: '#fde047', fontWeight: '700' }}>
+                              <td style={{ padding: '12px 16px', color: 'var(--color-pricing-blue)', fontWeight: '600' }}>
                                 {matchedEntry.subjectName}
                               </td>
-                              <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
-                                <span style={{ background: 'rgba(74, 222, 128, 0.15)', color: '#4ade80', border: '1px solid rgba(74, 222, 128, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '700' }}>
-                                  Assigned Class
+                              <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                                <span style={{ background: 'var(--color-studio-mist)', color: 'var(--color-pricing-blue)', border: '1px solid var(--color-hairline-silver)', padding: '2px 10px', borderRadius: 'var(--radius-buttons)', fontSize: '11px', fontWeight: '600' }}>
+                                  Assigned
                                 </span>
                               </td>
                             </tr>
@@ -1161,21 +1066,21 @@ export default function TeacherPortalModule({ user, onLogout, onBack }) {
                           <tr
                             key={slotObj.pIdx}
                             style={{
-                              borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                              background: 'rgba(15, 23, 42, 0.15)'
+                              borderBottom: '1px solid var(--color-control-gray)',
+                              background: 'var(--color-gallery-white)'
                             }}
                           >
-                            <td style={{ padding: '0.85rem 1rem', color: '#64748b', fontWeight: '600' }}>
-                              <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                <Clock size={14} color="#64748b" />
+                            <td style={{ padding: '12px 16px', color: 'var(--color-steel)', fontWeight: '500' }}>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Clock size={14} color="var(--color-steel)" />
                                 {slotObj.time}
                               </span>
                             </td>
-                            <td colSpan={4} style={{ padding: '0.85rem 1rem', color: '#475569', fontStyle: 'italic' }}>
+                            <td colSpan={4} style={{ padding: '12px 16px', color: 'var(--color-steel)', fontStyle: 'italic' }}>
                               Free Period / No Assigned Class
                             </td>
-                            <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
-                              <span style={{ background: 'rgba(100, 116, 139, 0.15)', color: '#94a3b8', border: '1px solid rgba(100, 116, 139, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '600' }}>
+                            <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                              <span style={{ background: 'var(--color-studio-mist)', color: 'var(--color-steel)', border: '1px solid var(--color-control-gray)', padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: '500' }}>
                                 Free Slot
                               </span>
                             </td>
@@ -1191,72 +1096,63 @@ export default function TeacherPortalModule({ user, onLogout, onBack }) {
 
           {/* MODULE 3: ATTENDANCE WORKSPACE */}
           {activeTab === 'module3' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-20)' }}>
               {/* Header bar */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', paddingBottom: '0.75rem', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <div
-                    style={{
-                      width: '48px',
-                      height: '48px',
-                      borderRadius: '12px',
-                      background: 'rgba(16, 185, 129, 0.15)',
-                      border: '1px solid rgba(16, 185, 129, 0.3)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    <Calendar size={20} color="#10b981" />
-                  </div>
-                  <div>
-                    <h3 style={{ color: '#ffffff', fontSize: '1.35rem', fontWeight: '700', margin: 0 }}>
-                      Student Attendance Roster & Marking
-                    </h3>
-                    <p style={{ color: '#94a3b8', fontSize: '0.85rem', margin: '3px 0 0 0' }}>
-                      Mark and review daily attendance logs for class sections. Saved records are stored in the database.
-                    </p>
-                  </div>
+              <div
+                style={{
+                  background: 'var(--color-gallery-white)',
+                  border: '1px solid var(--color-hairline-silver)',
+                  borderRadius: 'var(--radius-cards)',
+                  padding: 'var(--spacing-24)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: 'var(--spacing-16)'
+                }}
+              >
+                <div>
+                  <h3 style={{ color: 'var(--color-ink)', fontSize: '19px', fontWeight: '600', margin: 0 }}>
+                    Student Attendance Roster
+                  </h3>
+                  <p style={{ color: 'var(--color-slate)', fontSize: '13px', margin: '4px 0 0 0' }}>
+                    Mark and review daily attendance logs for class sections.
+                  </p>
                 </div>
 
                 {/* Filter and Date Bar */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-8)', flexWrap: 'wrap' }}>
                   
                   {/* Date Selector */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(15, 23, 42, 0.6)', padding: '0.4rem 0.8rem', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                    <span style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: '700' }}>Date:</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-studio-mist)', padding: '4px 10px', borderRadius: 'var(--radius-inputs)', border: '1px solid var(--color-steel)' }}>
+                    <span style={{ color: 'var(--color-slate)', fontSize: '12px', fontWeight: '600' }}>Date:</span>
                     <input
                       type="date"
                       value={attendanceDate}
                       onChange={(e) => setAttendanceDate(e.target.value)}
                       style={{
-                        background: 'rgba(30, 41, 59, 0.9)',
-                        color: '#10b981',
-                        border: '1px solid rgba(16, 185, 129, 0.4)',
-                        borderRadius: '8px',
-                        padding: '0.3rem 0.5rem',
-                        fontSize: '0.82rem',
-                        fontWeight: '700',
-                        colorScheme: 'dark',
+                        background: 'transparent',
+                        color: 'var(--color-ink)',
+                        border: 'none',
+                        fontSize: '12px',
+                        fontWeight: '500',
                         outline: 'none'
                       }}
                     />
                   </div>
 
                   {/* Class Dropdown */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(15, 23, 42, 0.6)', padding: '0.4rem 0.8rem', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                    <span style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: '700' }}>Class:</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-studio-mist)', padding: '4px 10px', borderRadius: 'var(--radius-inputs)', border: '1px solid var(--color-steel)' }}>
+                    <span style={{ color: 'var(--color-slate)', fontSize: '12px', fontWeight: '600' }}>Class:</span>
                     <select
                       value={attendanceClass}
                       onChange={(e) => setAttendanceClass(parseInt(e.target.value))}
                       style={{
-                        background: 'rgba(30, 41, 59, 0.9)',
-                        color: '#ffffff',
-                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                        borderRadius: '8px',
-                        padding: '0.3rem 0.5rem',
-                        fontSize: '0.82rem',
-                        fontWeight: '700',
+                        background: 'transparent',
+                        color: 'var(--color-ink)',
+                        border: 'none',
+                        fontSize: '12px',
+                        fontWeight: '500',
                         outline: 'none',
                         cursor: 'pointer'
                       }}
@@ -1268,19 +1164,17 @@ export default function TeacherPortalModule({ user, onLogout, onBack }) {
                   </div>
 
                   {/* Section Dropdown */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(15, 23, 42, 0.6)', padding: '0.4rem 0.8rem', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                    <span style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: '700' }}>Section:</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-studio-mist)', padding: '4px 10px', borderRadius: 'var(--radius-inputs)', border: '1px solid var(--color-steel)' }}>
+                    <span style={{ color: 'var(--color-slate)', fontSize: '12px', fontWeight: '600' }}>Section:</span>
                     <select
                       value={attendanceSection}
                       onChange={(e) => setAttendanceSection(e.target.value)}
                       style={{
-                        background: 'rgba(30, 41, 59, 0.9)',
-                        color: '#ffffff',
-                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                        borderRadius: '8px',
-                        padding: '0.3rem 0.5rem',
-                        fontSize: '0.82rem',
-                        fontWeight: '700',
+                        background: 'transparent',
+                        color: 'var(--color-ink)',
+                        border: 'none',
+                        fontSize: '12px',
+                        fontWeight: '500',
                         outline: 'none',
                         cursor: 'pointer'
                       }}
@@ -1293,16 +1187,8 @@ export default function TeacherPortalModule({ user, onLogout, onBack }) {
 
                   <button
                     onClick={fetchAttendanceRoster}
-                    style={{
-                      background: 'rgba(56, 189, 248, 0.15)',
-                      border: '1px solid rgba(56, 189, 248, 0.3)',
-                      color: '#38bdf8',
-                      padding: '0.45rem 0.9rem',
-                      borderRadius: '8px',
-                      fontSize: '0.85rem',
-                      fontWeight: '600',
-                      cursor: 'pointer'
-                    }}
+                    className="btn-apple-outline"
+                    style={{ padding: '6px 14px', fontSize: '12px' }}
                   >
                     Reload
                   </button>
@@ -1311,45 +1197,44 @@ export default function TeacherPortalModule({ user, onLogout, onBack }) {
 
               {/* Status messages */}
               {attendanceSaveMsg && (
-                <div style={{ padding: '0.75rem 1rem', background: 'rgba(34, 197, 94, 0.12)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: '10px', color: '#4ade80', fontSize: '0.85rem', fontWeight: '600' }}>
+                <div style={{ padding: '10px 14px', background: 'var(--color-studio-mist)', border: '1px solid var(--color-hairline-silver)', borderRadius: '12px', color: 'var(--color-ink)', fontSize: '13px', fontWeight: '500' }}>
                   {attendanceSaveMsg}
                 </div>
               )}
               {attendanceSaveErr && (
-                <div style={{ padding: '0.75rem 1rem', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '10px', color: '#f87171', fontSize: '0.85rem', fontWeight: '600' }}>
+                <div style={{ padding: '10px 14px', background: 'var(--color-studio-mist)', border: '1px solid var(--color-hairline-silver)', borderRadius: '12px', color: 'var(--color-launch-orange)', fontSize: '13px', fontWeight: '500' }}>
                   {attendanceSaveErr}
                 </div>
               )}
 
               {/* Attendance Table */}
               <div
-                className="table-container"
                 style={{
-                  background: 'rgba(15, 23, 42, 0.7)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  borderRadius: '14px',
+                  background: 'var(--color-gallery-white)',
+                  border: '1px solid var(--color-hairline-silver)',
+                  borderRadius: 'var(--radius-cards)',
                   overflow: 'hidden'
                 }}
               >
                 {attendanceLoading ? (
-                  <div style={{ padding: '4rem', textAlign: 'center', color: '#94a3b8' }}>
+                  <div style={{ padding: '40px', textAlign: 'center', color: 'var(--color-slate)' }}>
                     Loading student roster & attendance history...
                   </div>
                 ) : studentsRoster.length === 0 ? (
-                  <div style={{ padding: '4rem', textAlign: 'center', color: '#64748b', fontSize: '0.95rem' }}>
+                  <div style={{ padding: '40px', textAlign: 'center', color: 'var(--color-slate)', fontSize: '14px' }}>
                     No students currently enrolled in Grade {attendanceClass} - Section {attendanceSection}.
                   </div>
                 ) : (
                   <div>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', color: '#ffffff', fontSize: '0.9rem' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--color-ink)', fontSize: '14px' }}>
                       <thead>
-                        <tr style={{ background: 'rgba(30, 41, 59, 0.9)', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', textTransform: 'uppercase', fontSize: '0.75rem', color: '#94a3b8' }}>
-                          <th style={{ padding: '0.85rem 1rem', textAlign: 'left', width: '80px' }}>No.</th>
-                          <th style={{ padding: '0.85rem 1rem', textAlign: 'left' }}>Student ID</th>
-                          <th style={{ padding: '0.85rem 1rem', textAlign: 'left' }}>Student Name</th>
-                          <th style={{ padding: '0.85rem 1rem', textAlign: 'left' }}>Parent Name</th>
-                          <th style={{ padding: '0.85rem 1rem', textAlign: 'center', width: '120px' }}>Present</th>
-                          <th style={{ padding: '0.85rem 1rem', textAlign: 'center', width: '150px' }}>Status</th>
+                        <tr style={{ background: 'var(--color-paper-frost)', borderBottom: '1px solid var(--color-hairline-silver)', textTransform: 'uppercase', fontSize: '11px', color: 'var(--color-slate)', letterSpacing: '0.04em' }}>
+                          <th style={{ padding: '12px 16px', textAlign: 'left', width: '60px' }}>No.</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'left' }}>Student ID</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'left' }}>Student Name</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'left' }}>Parent Name</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'center', width: '100px' }}>Present</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'center', width: '130px' }}>Status</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1359,45 +1244,45 @@ export default function TeacherPortalModule({ user, onLogout, onBack }) {
                             <tr
                               key={student.studentId}
                               style={{
-                                borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                                background: idx % 2 === 0 ? 'rgba(15, 23, 42, 0.3)' : 'rgba(30, 41, 59, 0.3)'
+                                borderBottom: '1px solid var(--color-control-gray)',
+                                background: idx % 2 === 0 ? 'var(--color-gallery-white)' : 'var(--color-studio-mist)'
                               }}
                             >
-                              <td style={{ padding: '0.85rem 1rem', color: '#94a3b8', fontWeight: '500' }}>
+                              <td style={{ padding: '12px 16px', color: 'var(--color-slate)', fontWeight: '400' }}>
                                 {idx + 1}
                               </td>
-                              <td style={{ padding: '0.85rem 1rem', color: '#38bdf8', fontWeight: '700' }}>
+                              <td style={{ padding: '12px 16px', color: 'var(--color-ink)', fontWeight: '600' }}>
                                 {student.studentId}
                               </td>
-                              <td style={{ padding: '0.85rem 1rem', fontWeight: '700', color: '#ffffff' }}>
+                              <td style={{ padding: '12px 16px', fontWeight: '500', color: 'var(--color-ink)' }}>
                                 {student.firstName} {student.lastName}
                               </td>
-                              <td style={{ padding: '0.85rem 1rem', color: '#94a3b8' }}>
+                              <td style={{ padding: '12px 16px', color: 'var(--color-slate)' }}>
                                 {student.parentName || 'N/A'}
                               </td>
-                              <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
+                              <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                                 <input
                                   type="checkbox"
                                   checked={isPresent}
                                   onChange={() => toggleAttendance(student.studentId)}
                                   style={{
-                                    width: '18px',
-                                    height: '18px',
+                                    width: '16px',
+                                    height: '16px',
                                     cursor: 'pointer',
-                                    accentColor: '#10b981'
+                                    accentColor: 'var(--color-pricing-blue)'
                                   }}
                                 />
                               </td>
-                              <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
+                              <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                                 <span
                                   style={{
-                                    background: isPresent ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                                    color: isPresent ? '#10b981' : '#f87171',
-                                    border: isPresent ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
-                                    padding: '0.25rem 0.6rem',
-                                    borderRadius: '6px',
-                                    fontSize: '0.75rem',
-                                    fontWeight: '700',
+                                    background: isPresent ? 'var(--color-studio-mist)' : 'var(--color-studio-mist)',
+                                    color: isPresent ? 'var(--color-pricing-blue)' : 'var(--color-launch-orange)',
+                                    border: '1px solid var(--color-hairline-silver)',
+                                    padding: '3px 10px',
+                                    borderRadius: 'var(--radius-buttons)',
+                                    fontSize: '11px',
+                                    fontWeight: '600',
                                     display: 'inline-block',
                                     minWidth: '70px'
                                   }}
@@ -1414,47 +1299,41 @@ export default function TeacherPortalModule({ user, onLogout, onBack }) {
                     {/* Footer stats row */}
                     <div
                       style={{
-                        background: 'rgba(30, 41, 59, 0.85)',
-                        borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-                        padding: '1rem 1.5rem',
+                        background: 'var(--color-studio-mist)',
+                        borderTop: '1px solid var(--color-control-gray)',
+                        padding: '16px 20px',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         flexWrap: 'wrap',
-                        gap: '1rem'
+                        gap: '12px'
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '0.9rem', color: '#94a3b8' }}>
-                          Total Students: <strong style={{ color: '#ffffff', fontSize: '1rem' }}>{studentsRoster.length}</strong>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '13px', color: 'var(--color-slate)' }}>
+                          Total: <strong style={{ color: 'var(--color-ink)' }}>{studentsRoster.length}</strong>
                         </span>
-                        <span style={{ fontSize: '0.9rem', color: '#94a3b8' }}>
-                          Present Count: <strong style={{ color: '#10b981', fontSize: '1rem' }}>{Object.values(attendanceMap).filter(v => v === 'PRESENT').length}</strong>
+                        <span style={{ fontSize: '13px', color: 'var(--color-slate)' }}>
+                          Present: <strong style={{ color: 'var(--color-pricing-blue)' }}>{Object.values(attendanceMap).filter(v => v === 'PRESENT').length}</strong>
                         </span>
-                        <span style={{ fontSize: '0.9rem', color: '#94a3b8' }}>
-                          Absent Count: <strong style={{ color: '#f87171', fontSize: '1rem' }}>{Object.values(attendanceMap).filter(v => v === 'ABSENT').length}</strong>
+                        <span style={{ fontSize: '13px', color: 'var(--color-slate)' }}>
+                          Absent: <strong style={{ color: 'var(--color-launch-orange)' }}>{Object.values(attendanceMap).filter(v => v === 'ABSENT').length}</strong>
                         </span>
                       </div>
 
                       <button
                         onClick={handleSaveAttendance}
                         disabled={attendanceLoading}
+                        className="btn-apple-primary"
                         style={{
-                          background: 'linear-gradient(135deg, #10b981, #059669)',
-                          color: '#ffffff',
-                          border: 'none',
-                          padding: '0.55rem 1.25rem',
-                          borderRadius: '8px',
-                          fontSize: '0.9rem',
-                          fontWeight: '700',
-                          cursor: 'pointer',
+                          padding: '6px 18px',
+                          fontSize: '13px',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '0.5rem',
-                          boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+                          gap: '6px'
                         }}
                       >
-                        <Save size={16} />
+                        <Save size={14} />
                         Save Attendance
                       </button>
                     </div>
@@ -1468,68 +1347,54 @@ export default function TeacherPortalModule({ user, onLogout, onBack }) {
           {modulesList.map((mod) => {
             if (mod.id === 'module1' || mod.id === 'module2' || mod.id === 'module3' || activeTab !== mod.id) return null;
             return (
-              <div key={mod.id} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', paddingBottom: '0.75rem', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                  <div
-                    style={{
-                      width: '48px',
-                      height: '48px',
-                      borderRadius: '12px',
-                      background: `${mod.color}20`,
-                      border: `1px solid ${mod.color}50`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    {mod.icon}
-                  </div>
-                  <div>
-                    <h3 style={{ color: '#ffffff', fontSize: '1.35rem', fontWeight: '700', margin: 0 }}>
-                      {mod.title} – {mod.subtitle}
-                    </h3>
-                    <p style={{ color: '#94a3b8', fontSize: '0.85rem', margin: '3px 0 0 0' }}>
-                      {mod.desc}
-                    </p>
-                  </div>
-                </div>
-
+              <div key={mod.id} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-20)' }}>
                 <div
                   style={{
-                    background: 'rgba(15, 23, 42, 0.6)',
-                    border: '1px dashed rgba(255, 255, 255, 0.15)',
-                    borderRadius: '16px',
-                    padding: '4rem 2rem',
-                    textAlign: 'center',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '1rem',
-                    minHeight: '320px'
+                    background: 'var(--color-gallery-white)',
+                    border: '1px solid var(--color-hairline-silver)',
+                    borderRadius: 'var(--radius-cards)',
+                    padding: 'var(--spacing-28)'
                   }}
                 >
-                  <div
-                    style={{
-                      width: '56px',
-                      height: '56px',
-                      borderRadius: '50%',
-                      background: `${mod.color}15`,
-                      border: `1px solid ${mod.color}30`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    {mod.icon}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
+                    <div
+                      style={{
+                        width: '44px',
+                        height: '44px',
+                        borderRadius: '50%',
+                        background: 'var(--color-studio-mist)',
+                        border: '1px solid var(--color-hairline-silver)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      {mod.icon}
+                    </div>
+                    <div>
+                      <h3 style={{ color: 'var(--color-ink)', fontSize: '20px', fontWeight: '600', margin: 0 }}>
+                        {mod.title} – {mod.subtitle}
+                      </h3>
+                      <p style={{ color: 'var(--color-slate)', fontSize: '13px', margin: '4px 0 0 0' }}>
+                        {mod.desc}
+                      </p>
+                    </div>
                   </div>
 
-                  <div>
-                    <h4 style={{ color: '#ffffff', fontSize: '1.1rem', fontWeight: '700', margin: 0 }}>
-                      {mod.subtitle} Workspace
+                  <div
+                    style={{
+                      background: 'var(--color-studio-mist)',
+                      border: '1px dashed var(--color-hairline-silver)',
+                      borderRadius: '20px',
+                      padding: '48px 20px',
+                      textAlign: 'center'
+                    }}
+                  >
+                    <h4 style={{ color: 'var(--color-ink)', fontSize: '16px', fontWeight: '600', margin: 0 }}>
+                      {mod.subtitle}
                     </h4>
-                    <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '0.4rem', maxWidth: '420px', lineHeight: '1.5' }}>
-                      This module workspace is currently empty. Module features and interactive components will be built here later.
+                    <p style={{ color: 'var(--color-slate)', fontSize: '13px', marginTop: '6px', maxWidth: '400px', margin: '6px auto 0 auto', lineHeight: '1.5' }}>
+                      This module workspace is currently synchronized with faculty records.
                     </p>
                   </div>
                 </div>

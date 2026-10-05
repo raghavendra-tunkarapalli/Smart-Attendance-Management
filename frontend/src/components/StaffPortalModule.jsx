@@ -79,7 +79,7 @@ export default function StaffPortalModule({ user }) {
   const [showClassSidebar, setShowClassSidebar] = useState(true);
 
   const MAX_PERIODS_PER_TEACHER = 7;
-  const PERIOD_TIMINGS = ['9-10 AM', '10-11 AM', '11-12 PM', '12-01 PM (Lunch)', '01-02 PM', '02-03 PM', '03-04 PM', '04-05 PM'];
+  const PERIOD_TIMINGS = ['9-10 AM', '10-11 AM', '11-12 PM', '12-1 PM (Lunch)', '1-2 PM', '2-3 PM', '3-4 PM', '4-5 PM'];
 
   const [scheduleGrid, setScheduleGrid] = useState(() => {
     const initialGrid = {};
@@ -113,8 +113,8 @@ export default function StaffPortalModule({ user }) {
   const [mod3SelectedYear, setMod3SelectedYear] = useState(() => new Date().getFullYear());
   const [mod3AttendanceRecords, setMod3AttendanceRecords] = useState([]);
   const [mod3AttendanceLoading, setMod3AttendanceLoading] = useState(false);
-  const [selectedStudentDetail, setSelectedStudentDetail] = useState(null); // Student details object
-  const [selectedStudentAttendance, setSelectedStudentAttendance] = useState([]); // Daily records for selected student
+  const [selectedStudentDetail, setSelectedStudentDetail] = useState(null);
+  const [selectedStudentAttendance, setSelectedStudentAttendance] = useState([]);
   const [studentDetailLoading, setStudentDetailLoading] = useState(false);
   const [detailModalMonth, setDetailModalMonth] = useState(() => new Date().getMonth() + 1);
   const [detailModalYear, setDetailModalYear] = useState(() => new Date().getFullYear());
@@ -143,7 +143,6 @@ export default function StaffPortalModule({ user }) {
     fetchStudents();
     fetchClassRooms();
 
-    // Auto-polling every 5 seconds so teacher subject updates from DB are automatically synced
     const intervalId = setInterval(() => {
       fetchTeachers();
     }, 5000);
@@ -174,7 +173,6 @@ export default function StaffPortalModule({ user }) {
         const data = await res.json();
         if (Array.isArray(data)) {
           const newGrid = {};
-          // Initialize default recess cells first
           for (let c = 1; c <= 12; c++) {
             for (let s = 1; s <= 3; s++) {
               for (let p = 0; p < 8; p++) {
@@ -190,7 +188,7 @@ export default function StaffPortalModule({ user }) {
 
           data.forEach(item => {
             const cellKey = `${item.classStandard}_${item.sectionId}_${item.periodIndex}`;
-            if (item.periodIndex === 3) return; // Skip lunch
+            if (item.periodIndex === 3) return;
             
             if ((item.teacherName && item.teacherName.trim() !== '') || (item.roomNo && item.roomNo.trim() !== '')) {
               newGrid[cellKey] = {
@@ -271,7 +269,6 @@ export default function StaffPortalModule({ user }) {
     try {
       let combinedTeachers = [];
 
-      // 1. Fetch from Staff Portal Service teachers table
       try {
         const response = await fetch('http://localhost:8099/api/staff-portal/teachers');
         if (response.ok) {
@@ -282,13 +279,11 @@ export default function StaffPortalModule({ user }) {
         }
       } catch (e) {}
 
-      // 2. ALSO fetch from Teacher Portal Service (where teachers select/save their subjects!)
       try {
         const tpRes = await fetch('http://localhost:8099/api/teacher-portal/teachers');
         if (tpRes.ok) {
           const tpData = await tpRes.json();
           if (Array.isArray(tpData) && tpData.length > 0) {
-            // Map or merge chosen subjects into teacher list
             const tpMapped = tpData.map(t => ({
               id: t.id,
               name: t.name || t.username,
@@ -298,7 +293,6 @@ export default function StaffPortalModule({ user }) {
             if (combinedTeachers.length === 0) {
               combinedTeachers = tpMapped;
             } else {
-              // Merge/Override updated subjects from teacher_portal table
               tpMapped.forEach(tpItem => {
                 const idx = combinedTeachers.findIndex(c => c.name?.toLowerCase() === tpItem.name?.toLowerCase() || c.username?.toLowerCase() === tpItem.name?.toLowerCase());
                 if (idx !== -1) {
@@ -317,15 +311,15 @@ export default function StaffPortalModule({ user }) {
       } else {
         setTeachers([
           { id: 1, name: 'Sarah Connor', subject: 'Mathematics' },
-          { id: 2, name: 'teacher1 teacher1', subject: 'telugu' },
-          { id: 3, name: 'teacher2 teacher2', subject: 'hindhi' }
+          { id: 2, name: 'Robert Vance', subject: 'Social' },
+          { id: 3, name: 'Elena Rostova', subject: 'Physics' }
         ]);
       }
     } catch (error) {
       setTeachers([
         { id: 1, name: 'Sarah Connor', subject: 'Mathematics' },
-        { id: 2, name: 'teacher1 teacher1', subject: 'telugu' },
-        { id: 3, name: 'teacher2 teacher2', subject: 'hindhi' }
+        { id: 2, name: 'Robert Vance', subject: 'Social' },
+        { id: 3, name: 'Elena Rostova', subject: 'Physics' }
       ]);
     } finally {
       setLoading(false);
@@ -427,7 +421,6 @@ export default function StaffPortalModule({ user }) {
     }
   }, [activeTab, mod3SelectedClass, mod3SelectedSection, mod3SelectedMonth, mod3SelectedYear]);
 
-  // Effect to load specific student detail records when modal filters change
   useEffect(() => {
     if (selectedStudentDetail) {
       fetchStudentMonthlyAttendanceDetails(selectedStudentDetail.studentId, detailModalMonth, detailModalYear);
@@ -435,23 +428,18 @@ export default function StaffPortalModule({ user }) {
   }, [selectedStudentDetail, detailModalMonth, detailModalYear]);
 
   const fetchMod4Assignments = async (cls, sec) => {
-    console.log(`[Examinations] fetchMod4Assignments called with class=${cls}, section=${sec}`);
     setMod4Loading(true);
     try {
       const url = `http://localhost:8099/api/staff-examination/assignments?classStandard=${cls}&sectionName=${sec}`;
-      console.log(`[Examinations] Fetching from API Gateway: ${url}`);
       let res = await fetch(url).catch(() => null);
       if (!res || !res.ok) {
         const fallbackUrl = `http://localhost:8096/api/staff-examination/assignments?classStandard=${cls}&sectionName=${sec}`;
-        console.log(`[Examinations] API Gateway failed, attempting direct fallback: ${fallbackUrl}`);
         res = await fetch(fallbackUrl).catch(() => null);
       }
       if (res && res.ok) {
         const data = await res.json();
-        console.log(`[Examinations] Fetched ${data ? data.length : 0} assignments successfully:`, data);
         setMod4Assignments(data || []);
       } else {
-        console.warn(`[Examinations] Fetch failed with status: ${res ? res.status : 'No Response'}`);
         setMod4Assignments([]);
       }
     } catch (err) {
@@ -480,21 +468,21 @@ export default function StaffPortalModule({ user }) {
 
   const saveMod4Assignment = async () => {
     if (!mod4NewAssignmentTitle.trim()) {
-      showToast('⚠️ Please enter an assignment title!', 'error');
+      showToast('Please enter an assignment title', 'error');
       return;
     }
     if (!mod4NewAssignmentSubject.trim()) {
-      showToast('⚠️ Please enter a subject name!', 'error');
+      showToast('Please enter a subject name', 'error');
       return;
     }
     if (!mod4NewAssignmentConductDate) {
-      showToast('⚠️ Please select a conduct date and time!', 'error');
+      showToast('Please select a conduct date and time', 'error');
       return;
     }
 
     const filledQuestions = mod4NewQuestions.filter(q => q.questionText.trim() !== '');
     if (filledQuestions.length === 0) {
-      showToast('⚠️ Please fill in at least one MCQ question!', 'error');
+      showToast('Please fill in at least one MCQ question', 'error');
       return;
     }
 
@@ -524,7 +512,7 @@ export default function StaffPortalModule({ user }) {
       }
 
       if (res && res.ok) {
-        showToast('✓ Assignment saved successfully in database!', 'success');
+        showToast('Assignment saved successfully in database!', 'success');
         setMod4NewAssignmentTitle('');
         setMod4NewAssignmentSubject('');
         setMod4NewAssignmentConductDate('');
@@ -538,11 +526,11 @@ export default function StaffPortalModule({ user }) {
         setMod4ViewMode('list');
         fetchMod4Assignments(mod4SelectedClass, mod4SelectedSection);
       } else {
-        showToast('⚠️ Failed to save assignment.', 'error');
+        showToast('Failed to save assignment.', 'error');
       }
     } catch (err) {
       console.error('Error saving assignment:', err);
-      showToast('⚠️ Connection error saving assignment.', 'error');
+      showToast('Connection error saving assignment.', 'error');
     }
   };
 
@@ -573,7 +561,7 @@ export default function StaffPortalModule({ user }) {
     const seen = new Set();
     
     for (let p = 0; p < 8; p++) {
-      if (p === 3) continue; // Skip lunch
+      if (p === 3) continue;
       const cellKey = `${mod3SelectedClass}_${secId}_${p}`;
       const cell = scheduleGrid[cellKey];
       if (cell && cell.teacher && cell.teacher !== 'Unassigned' && cell.teacher !== 'Lunch Break' && cell.sub && cell.sub !== 'General' && cell.sub !== 'Break') {
@@ -634,36 +622,32 @@ export default function StaffPortalModule({ user }) {
     const classroomInfo = classRooms.find(r => r.classCode === `CLS_${selectedClass}_SEC_${sectionNum}`);
     const targetRoom = currentAssignment?.room_no || classroomInfo?.roomNo || ('Room ' + (100 + (selectedClass - 1) * 3 + sectionNum));
 
-    // Double-Booking Conflict Prevention across ALL Classes & Sections (Teacher and Room)
     for (let c = 1; c <= 12; c++) {
       for (let s = 1; s <= 3; s++) {
         if (c === selectedClass && s === sectionNum) continue;
         const otherCellKey = c + '_' + s + '_' + colIdx;
         const otherAssignment = scheduleGrid[otherCellKey];
         
-        // 1. Teacher double-booking check
         if (otherAssignment && otherAssignment.teacher && otherAssignment.teacher !== 'Unassigned') {
           if (otherAssignment.teacher === teacherObj.name) {
-            showToast(`⚠️ Teacher Conflict: ${teacherObj.name} is already assigned to Class ${c} Section ${s} during ${PERIOD_TIMINGS[colIdx]}!`, 'error');
+            showToast(`Conflict: ${teacherObj.name} is already assigned to Class ${c} Section ${s} during ${PERIOD_TIMINGS[colIdx]}!`, 'error');
             return;
           }
         }
         
-        // 2. Room double-booking check (strict check across all explicitly assigned room_no)
         if (otherAssignment && otherAssignment.room_no) {
           if (otherAssignment.room_no.toLowerCase() === targetRoom.toLowerCase()) {
-            showToast(`⚠️ Room Conflict: ${targetRoom} is already allocated to Class ${c} Section ${s} during ${PERIOD_TIMINGS[colIdx]}!`, 'error');
+            showToast(`Room Conflict: ${targetRoom} is already allocated to Class ${c} Section ${s} during ${PERIOD_TIMINGS[colIdx]}!`, 'error');
             return;
           }
         }
       }
     }
 
-    // Max Workload Limit per Teacher
     const currentCount = getTeacherAssignedCount(teacherObj.name);
     const isReplacingSelf = currentAssignment?.teacher === teacherObj.name;
     if (!isReplacingSelf && currentCount >= MAX_PERIODS_PER_TEACHER) {
-      showToast('⛔ Workload Limit Exceeded: ' + teacherObj.name + ' has reached maximum ' + MAX_PERIODS_PER_TEACHER + ' periods for Class ' + selectedClass + '!', 'error');
+      showToast('Workload Limit Exceeded: ' + teacherObj.name + ' has reached maximum ' + MAX_PERIODS_PER_TEACHER + ' periods for Class ' + selectedClass + '!', 'error');
       return;
     }
 
@@ -676,10 +660,9 @@ export default function StaffPortalModule({ user }) {
       }
     }));
 
-    // Async DB Sync
     saveScheduleToDB(selectedClass, sectionNum, colIdx, targetRoom, teacherObj.name, teacherObj.subject);
 
-    showToast('✓ Assigned ' + teacherObj.name + ' (' + teacherObj.subject + ') to Section ' + sectionNum + ' Period ' + PERIOD_TIMINGS[colIdx], 'success');
+    showToast('Assigned ' + teacherObj.name + ' (' + teacherObj.subject + ') to Section ' + sectionNum + ' Period ' + PERIOD_TIMINGS[colIdx], 'success');
   };
 
   const handleDropRoom = (sectionNum, colIdx, roomData) => {
@@ -693,7 +676,6 @@ export default function StaffPortalModule({ user }) {
     const cellKey = selectedClass + '_' + sectionNum + '_' + colIdx;
     const targetRoom = roomData.roomNo;
 
-    // Room Double-Booking Conflict Prevention across ALL Classes & Sections for this period
     for (let c = 1; c <= 12; c++) {
       for (let s = 1; s <= 3; s++) {
         if (c === selectedClass && s === sectionNum) continue;
@@ -702,7 +684,7 @@ export default function StaffPortalModule({ user }) {
         
         if (otherAssignment && otherAssignment.room_no) {
           if (otherAssignment.room_no.toLowerCase() === targetRoom.toLowerCase()) {
-            showToast(`⚠️ Room Conflict: ${targetRoom} is already allocated to Class ${c} Section ${s} during ${PERIOD_TIMINGS[colIdx]}!`, 'error');
+            showToast(`Room Conflict: ${targetRoom} is already allocated to Class ${c} Section ${s} during ${PERIOD_TIMINGS[colIdx]}!`, 'error');
             return;
           }
         }
@@ -717,7 +699,6 @@ export default function StaffPortalModule({ user }) {
       }
     }));
 
-    // Async DB Sync
     const existing = scheduleGrid[cellKey];
     saveScheduleToDB(
       selectedClass, 
@@ -728,7 +709,7 @@ export default function StaffPortalModule({ user }) {
       existing?.sub || 'General'
     );
 
-    showToast(`✓ Allocated ${targetRoom} to Section ${sectionNum} Period ${PERIOD_TIMINGS[colIdx]}`, 'success');
+    showToast(`Allocated ${targetRoom} to Section ${sectionNum} Period ${PERIOD_TIMINGS[colIdx]}`, 'success');
   };
 
   const handleEditRoomNumber = (sectionNum, colIdx) => {
@@ -741,7 +722,6 @@ export default function StaffPortalModule({ user }) {
     if (newRoom && newRoom.trim() !== '') {
       const trimmedRoom = newRoom.trim();
       
-      // Conflict Prevention: Room Double-Booking across ALL Classes & Sections
       for (let c = 1; c <= 12; c++) {
         for (let s = 1; s <= 3; s++) {
           if (c === selectedClass && s === sectionNum) continue;
@@ -750,7 +730,7 @@ export default function StaffPortalModule({ user }) {
           
           if (otherAssignment && otherAssignment.room_no) {
             if (otherAssignment.room_no.toLowerCase() === trimmedRoom.toLowerCase()) {
-              showToast('⚠️ Room Conflict: ' + trimmedRoom + ' is already allocated to Class ' + c + ' Section ' + s + ' during ' + PERIOD_TIMINGS[colIdx] + '!', 'error');
+              showToast('Room Conflict: ' + trimmedRoom + ' is already allocated to Class ' + c + ' Section ' + s + ' during ' + PERIOD_TIMINGS[colIdx] + '!', 'error');
               return;
             }
           }
@@ -765,7 +745,6 @@ export default function StaffPortalModule({ user }) {
         }
       }));
 
-      // Async DB Sync
       const existing = scheduleGrid[cellKey];
       saveScheduleToDB(
         selectedClass, 
@@ -787,9 +766,7 @@ export default function StaffPortalModule({ user }) {
       [cellKey]: null
     }));
     
-    // Async DB Sync
     deleteScheduleFromDB(selectedClass, sectionNum, colIdx);
-
     showToast('Period assignment cleared.', 'info');
   };
 
@@ -808,11 +785,11 @@ export default function StaffPortalModule({ user }) {
   };
 
   const modulesList = [
-    { id: 'module1', title: 'Schedule', subtitle: 'Class Timetable & Faculty Schedule', icon: <Calendar size={22} color="#38bdf8" />, color: '#38bdf8', desc: 'Overview of teacher directory, period allocation count & conflict-free drag & drop schedule.' },
-    { id: 'module2', title: 'Student Directory', subtitle: 'All Students Data & Admissions', icon: <Users size={22} color="#4ade80" />, color: '#4ade80', desc: 'Complete student records: Student ID, First Name, Last Name, Username, Parent Name, Email, and Status (ACCEPTED / REJECTED).' },
-    { id: 'module3', title: 'Student Details', subtitle: 'Detailed Student Database & Attendance Lookup', icon: <Users size={22} color="#f59e0b" />, color: '#f59e0b', desc: 'Browse student details and check monthly attendance logs from the database.' },
-    { id: 'module4', title: 'Examinations', subtitle: 'Exams & MCQ Assignment Management', icon: <BookOpen size={22} color="#ec4899" />, color: '#ec4899', desc: 'Create, schedule, and view MCQ assignments for all 12 classes.' },
-    { id: 'module5', title: 'Module 5', subtitle: 'Module 5 Feature', icon: <Clock size={22} color="#8b5cf6" />, color: '#8b5cf6', desc: 'Reports, analytics & staff administration controls.' }
+    { id: 'module1', title: 'Schedule', subtitle: 'Class Timetable & Faculty Schedule', icon: <Calendar size={18} color="var(--color-pricing-blue)" />, desc: 'Overview of teacher directory, period allocation count & conflict-free schedule grid.' },
+    { id: 'module2', title: 'Student Directory', subtitle: 'All Students Data & Admissions', icon: <Users size={18} color="var(--color-ink)" />, desc: 'Student records: ID, Name, Parent Details, and Admission Status.' },
+    { id: 'module3', title: 'Student Details', subtitle: 'Monthly Attendance Logs', icon: <UserCheck size={18} color="var(--color-apple-blue)" />, desc: 'Browse student monthly attendance logs and calculate percentage.' },
+    { id: 'module4', title: 'Examinations', subtitle: 'Exams & MCQ Assignment Management', icon: <BookOpen size={18} color="var(--color-slate)" />, desc: 'Create, schedule, and view MCQ assignments for all 12 classes.' },
+    { id: 'module5', title: 'Administration', subtitle: 'Reports & Analytics', icon: <Clock size={18} color="var(--color-steel)" />, desc: 'Administrative reporting and school analytics.' }
   ];
 
   const filteredTeachers = teachers.filter(t =>
@@ -826,1954 +803,964 @@ export default function StaffPortalModule({ user }) {
   const initialLetter = firstName.charAt(0).toUpperCase();
 
   return (
-    <div style={{ width: '100%', maxWidth: '98%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem', boxSizing: 'border-box', padding: '0 1rem' }}>
+    <div style={{ width: '100%', margin: '0', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-20)' }}>
+      
       {/* Toast Notification Banner */}
       {notification && (
         <div style={{
           position: 'fixed',
-          top: '20px',
-          right: '20px',
+          top: '24px',
+          right: '24px',
           zIndex: 9999,
-          background: notification.type === 'error' ? 'rgba(239, 68, 68, 0.95)' : notification.type === 'success' ? 'rgba(34, 197, 94, 0.95)' : 'rgba(245, 158, 11, 0.95)',
-          color: '#ffffff',
-          padding: '0.85rem 1.25rem',
-          borderRadius: '12px',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+          background: 'var(--color-ink)',
+          color: 'var(--color-gallery-white)',
+          padding: '12px 20px',
+          borderRadius: 'var(--radius-pills)',
           display: 'flex',
           alignItems: 'center',
-          gap: '0.75rem',
-          fontWeight: '700',
-          fontSize: '0.88rem'
+          gap: '10px',
+          fontWeight: '500',
+          fontSize: '13px',
+          border: '1px solid var(--color-hairline-silver)'
         }}>
-          <AlertCircle size={18} />
+          <AlertCircle size={16} color="var(--color-pricing-blue)" />
           <span>{notification.msg}</span>
-          <button onClick={() => setNotification(null)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', marginLeft: '0.5rem' }}>
+          <button onClick={() => setNotification(null)} style={{ background: 'transparent', border: 'none', color: 'var(--color-steel)', cursor: 'pointer', marginLeft: '6px' }}>
             <X size={14} />
           </button>
         </div>
       )}
 
-      {/* Top Banner Header */}
-      <div className="welcome-banner" style={{ background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.8))', padding: '1.5rem 2rem', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
+      {/* Top Banner Header (Apple Gallery White Flat Surface) */}
+      <div style={{
+        background: 'var(--color-gallery-white)',
+        padding: 'var(--spacing-24) var(--spacing-28)',
+        borderRadius: 'var(--radius-cards)',
+        border: '1px solid var(--color-hairline-silver)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: 'var(--spacing-16)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-16)' }}>
           <div
             style={{
-              width: '56px',
-              height: '56px',
+              width: '52px',
+              height: '52px',
               borderRadius: '50%',
-              background: 'linear-gradient(135deg, #0ea5e9, #0284c7)',
+              background: 'var(--color-ink)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '1.4rem',
-              fontWeight: '700',
-              color: '#ffffff',
-              boxShadow: '0 4px 14px rgba(14, 165, 233, 0.4)'
+              fontSize: '19px',
+              fontWeight: '600',
+              color: 'var(--color-gallery-white)',
+              fontFamily: 'var(--font-sf-pro-display)'
             }}
           >
             {initialLetter}
           </div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <h2 className="welcome-title" style={{ fontSize: '1.35rem', fontWeight: '700', color: '#ffffff', margin: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h2 style={{ fontSize: '22px', fontWeight: '600', color: 'var(--color-ink)', margin: 0, letterSpacing: '-0.5px' }}>
                 {firstName} {lastName}
               </h2>
-              <span className="role-pill staff" style={{ background: 'rgba(14, 165, 233, 0.2)', color: '#38bdf8', borderColor: 'rgba(14, 165, 233, 0.5)', fontSize: '0.75rem' }}>
+              <span className="role-pill" style={{ background: 'var(--color-studio-mist)', color: 'var(--color-ink)', border: '1px solid var(--color-hairline-silver)', fontSize: '11px', fontWeight: '600', padding: '3px 10px', borderRadius: 'var(--radius-buttons)' }}>
                 STAFF PORTAL
               </span>
             </div>
-            <p className="user-email-text" style={{ fontSize: '0.85rem', color: '#94a3b8', marginTop: '2px' }}>
-              <Mail size={12} style={{ display: 'inline', marginRight: '4px' }} />
+            <p style={{ fontSize: '13px', color: 'var(--color-slate)', marginTop: '4px', margin: 0 }}>
+              <Mail size={12} style={{ display: 'inline', marginRight: '5px' }} color="var(--color-steel)" />
               {email}
             </p>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-          <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '700' }}>ROLE</div>
-            <div style={{ color: '#fde047', fontWeight: '700', fontSize: '1rem', marginTop: '2px' }}>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ background: 'var(--color-studio-mist)', padding: '8px 16px', borderRadius: '12px', border: '1px solid var(--color-control-gray)' }}>
+            <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em' }}>ROLE</div>
+            <div style={{ color: 'var(--color-ink)', fontWeight: '600', fontSize: '14px', marginTop: '2px' }}>
               Administrative Staff
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Staff Portal Card */}
-      <div className="dashboard-card" style={{ width: '100%', padding: '1.5rem 1.75rem', boxSizing: 'border-box', overflow: 'hidden' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '260px minmax(0, 1fr)', gap: '1.5rem', alignItems: 'start' }}>
-          {/* Left Module Sidebar Navigation */}
-          <div
-            style={{
-              background: 'rgba(15, 23, 42, 0.8)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '16px',
-              padding: '1.25rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.8rem',
-              height: 'fit-content'
-            }}
-          >
-            <div style={{ fontSize: '0.72rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: '0.2rem' }}>
-              STAFF PORTAL MODULES
-            </div>
-
-            {modulesList.map((mod) => {
-              const isActive = activeTab === mod.id;
-              return (
-                <button
-                  key={mod.id}
-                  onClick={() => setActiveTab(mod.id)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    width: '100%',
-                    padding: '0.85rem 1rem',
-                    borderRadius: '12px',
-                    background: isActive ? 'linear-gradient(135deg, ' + mod.color + '25, ' + mod.color + '10)' : 'rgba(30, 41, 59, 0.4)',
-                    border: isActive ? '1.5px solid ' + mod.color : '1px solid rgba(255, 255, 255, 0.05)',
-                    color: isActive ? '#ffffff' : '#94a3b8',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    boxShadow: isActive ? '0 4px 14px ' + mod.color + '30' : 'none'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    {mod.icon}
-                    <span style={{ fontSize: '0.9rem', fontWeight: isActive ? '700' : '600' }}>
-                      {mod.title}
-                    </span>
-                  </div>
-                  <ChevronRight size={16} color={isActive ? mod.color : '#64748b'} />
-                </button>
-              );
-            })}
+      {/* Main Staff Portal Layout */}
+      <div style={{ display: 'grid', gridTemplateColumns: '175px minmax(0, 1fr)', gap: 'var(--spacing-14)', alignItems: 'start', width: '100%' }}>
+        
+        {/* Left Module Sidebar Navigation */}
+        <div
+          style={{
+            background: 'var(--color-gallery-white)',
+            border: '1px solid var(--color-hairline-silver)',
+            borderRadius: 'var(--radius-cards)',
+            padding: 'var(--spacing-16)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '6px'
+          }}
+        >
+          <div style={{ fontSize: '11px', fontWeight: '600', color: 'var(--color-slate)', textTransform: 'uppercase', letterSpacing: '0.06em', paddingLeft: '6px', marginBottom: '8px' }}>
+            STAFF MODULES
           </div>
 
-          {/* Right Content Workspace */}
-          <div style={{ minWidth: 0, width: '100%', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            {modulesList.map((mod) => {
-              if (activeTab !== mod.id) return null;
-              return (
-                <div key={mod.id} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%', minWidth: 0 }}>
-                  {/* Module Header Bar */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', paddingBottom: '0.75rem', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', minWidth: 0 }}>
-                      <div
-                        style={{
-                          width: '48px',
-                          height: '48px',
-                          borderRadius: '12px',
-                          background: mod.color + '20',
-                          border: '1px solid ' + mod.color + '50',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0
-                        }}
-                      >
-                        {mod.icon}
-                      </div>
-                      <div style={{ minWidth: 0 }}>
-                        <h3 style={{ color: '#ffffff', fontSize: '1.2rem', fontWeight: '700', margin: 0 }}>
-                          {mod.title} – {mod.subtitle}
-                        </h3>
-                        <p style={{ color: '#94a3b8', fontSize: '0.82rem', margin: 0, marginTop: '2px' }}>
-                          {mod.desc}
-                        </p>
-                      </div>
+          {modulesList.map((mod) => {
+            const isActive = activeTab === mod.id;
+            return (
+              <button
+                key={mod.id}
+                onClick={() => setActiveTab(mod.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  width: '100%',
+                  padding: '9px 12px',
+                  borderRadius: '12px',
+                  background: isActive ? 'var(--color-studio-mist)' : 'transparent',
+                  border: isActive ? '1px solid var(--color-pricing-blue)' : '1px solid transparent',
+                  color: isActive ? 'var(--color-pricing-blue)' : 'var(--color-ink)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {mod.icon}
+                  <span style={{ fontSize: '13px', fontWeight: isActive ? '600' : '400' }}>
+                    {mod.title}
+                  </span>
+                </div>
+                <ChevronRight size={13} style={{ opacity: isActive ? 1 : 0.3 }} />
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Right Content Workspace */}
+        <div style={{ minWidth: 0, width: '100%', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-16)' }}>
+          {modulesList.map((mod) => {
+            if (activeTab !== mod.id) return null;
+            return (
+              <div key={mod.id} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-16)', width: '100%', minWidth: 0 }}>
+                
+                {/* Module Header Card */}
+                <div style={{
+                  background: 'var(--color-gallery-white)',
+                  border: '1px solid var(--color-hairline-silver)',
+                  borderRadius: 'var(--radius-cards)',
+                  padding: 'var(--spacing-20) var(--spacing-24)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 'var(--spacing-16)',
+                  flexWrap: 'wrap'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                    <div
+                      style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '50%',
+                        background: 'var(--color-studio-mist)',
+                        border: '1px solid var(--color-hairline-silver)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}
+                    >
+                      {mod.icon}
                     </div>
-
-                    {/* Schedule Header Action Controls */}
-                    {mod.id === 'module1' && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                        <button
-                          onClick={fetchTeachers}
-                          title="Sync fresh teacher database subjects"
-                          style={{
-                            background: 'rgba(56, 189, 248, 0.15)',
-                            color: '#38bdf8',
-                            border: '1px solid rgba(56, 189, 248, 0.35)',
-                            borderRadius: '10px',
-                            padding: '0.45rem 0.85rem',
-                            fontSize: '0.82rem',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.4rem'
-                          }}
-                        >
-                          <RefreshCw size={14} className={loading ? 'spin' : ''} />
-                          <span>Sync Teachers</span>
-                        </button>
-
-                        <button
-                          onClick={() => setShowClassSidebar(!showClassSidebar)}
-                          style={{
-                            background: showClassSidebar ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.08)',
-                            color: showClassSidebar ? '#38bdf8' : '#94a3b8',
-                            border: showClassSidebar ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid rgba(255, 255, 255, 0.12)',
-                            borderRadius: '10px',
-                            padding: '0.45rem 0.85rem',
-                            fontSize: '0.82rem',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.4rem'
-                          }}
-                        >
-                          <Grid size={15} />
-                          <span>{showClassSidebar ? 'Hide Classes' : 'Show Classes'}</span>
-                        </button>
-
-                        <div style={{ position: 'relative', minWidth: '200px' }}>
-                          <Search size={15} color="#94a3b8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-                          <input
-                            type="text"
-                            placeholder="Search teacher or subject..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="form-input"
-                            style={{ paddingLeft: '2.2rem', padding: '0.45rem 0.75rem 0.45rem 2.2rem', fontSize: '0.85rem', width: '100%' }}
-                          />
-                        </div>
-                      </div>
-                    )}
+                    <div style={{ minWidth: 0 }}>
+                      <h3 style={{ color: 'var(--color-ink)', fontSize: '18px', fontWeight: '600', margin: 0 }}>
+                        {mod.title} – {mod.subtitle}
+                      </h3>
+                      <p style={{ color: 'var(--color-slate)', fontSize: '13px', margin: 0, marginTop: '2px' }}>
+                        {mod.desc}
+                      </p>
+                    </div>
                   </div>
 
-                  {/* MODULE 1: TEACHER ALLOCATION TABLE WITH PERIOD COUNT + 12 CLASS BOXES */}
-                  {mod.id === 'module1' ? (
-                    <>
-                      {/* Drag & Drop Rules Banner */}
-                      <div style={{ background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: '12px', padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.82rem', color: '#38bdf8' }}>
-                          <Sparkles size={16} />
-                          <span><strong>Live DB Sync Active:</strong> Auto-fetches teacher subject selections from MySQL database every 5s. Drag or click to assign!</span>
-                        </div>
-                        {activeTeacherClick && (
-                          <div style={{ fontSize: '0.8rem', background: 'rgba(253, 224, 71, 0.2)', color: '#fde047', padding: '0.2rem 0.65rem', borderRadius: '8px', fontWeight: '700' }}>
-                            Selected: {activeTeacherClick.name} ({activeTeacherClick.subject}) — Click cell to assign
-                          </div>
-                        )}
-                        {activeRoomClick && (
-                          <div style={{ fontSize: '0.8rem', background: 'rgba(168, 85, 247, 0.2)', color: '#c084fc', padding: '0.2rem 0.65rem', borderRadius: '8px', fontWeight: '700' }}>
-                            Selected Room: {activeRoomClick.roomNo} — Click cell to assign
-                          </div>
-                        )}
+                  {/* Schedule Header Action Controls */}
+                  {mod.id === 'module1' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <button
+                        onClick={fetchTeachers}
+                        className="btn-apple-outline"
+                        style={{ padding: '5px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        <RefreshCw size={13} className={loading ? 'spin' : ''} />
+                        <span>Sync Teachers</span>
+                      </button>
+
+                      <button
+                        onClick={() => setShowClassSidebar(!showClassSidebar)}
+                        className="btn-apple-outline"
+                        style={{ padding: '5px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        <Grid size={13} />
+                        <span>{showClassSidebar ? 'Hide Classes' : 'Show Classes'}</span>
+                      </button>
+
+                      <div style={{ position: 'relative', minWidth: '180px' }}>
+                        <input
+                          type="text"
+                          placeholder="Search teacher or subject..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="search-input"
+                          style={{ padding: '5px 12px', fontSize: '12px', width: '100%', boxSizing: 'border-box' }}
+                        />
                       </div>
+                    </div>
+                  )}
+                </div>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: showClassSidebar ? '1fr 340px' : '1fr', gap: '1.25rem', transition: 'all 0.3s ease', minWidth: 0 }}>
-                        {/* Left: Compact Teacher Directory Table with Assigned Period Counter */}
-                        <div style={{ background: 'rgba(15, 23, 42, 0.7)', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.1)', padding: '1.25rem', minWidth: 0 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                            <h4 style={{ color: '#ffffff', fontSize: '1.05rem', fontWeight: '700', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <Users size={18} color="#38bdf8" />
-                              <span>Teacher Directory & Workload</span>
-                            </h4>
-                            <span style={{ fontSize: '0.78rem', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.3)', padding: '0.2rem 0.65rem', borderRadius: '12px', fontWeight: '600' }}>
-                              {filteredTeachers.length} Active Faculty
-                            </span>
-                          </div>
-
-                          <div className="table-wrapper" style={{ width: '100%', overflowX: 'auto' }}>
-                            <table className="portal-table" style={{ width: '100%' }}>
-                              <thead>
-                                <tr>
-                                  <th>Teacher Name</th>
-                                  <th>Subject</th>
-                                  <th style={{ textAlign: 'center' }}>Periods Assigned</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {filteredTeachers.length > 0 ? (
-                                  filteredTeachers.map((t) => {
-                                    const assignedCount = getTeacherAssignedCount(t.name);
-                                    const isMax = assignedCount >= MAX_PERIODS_PER_TEACHER;
-                                    const isSelected = activeTeacherClick?.id === t.id;
-
-                                    return (
-                                      <tr
-                                        key={t.id || t.userId || t.name}
-                                        draggable={!isMax}
-                                        onDragStart={(e) => handleDragStart(e, t)}
-                                        onClick={() => setActiveTeacherClick(isSelected ? null : t)}
-                                        style={{
-                                          cursor: isMax ? 'not-allowed' : 'grab',
-                                          background: isSelected ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
-                                          borderLeft: isSelected ? '3px solid #38bdf8' : 'none'
-                                        }}
-                                      >
-                                        <td>
-                                          <strong style={{ color: '#ffffff', fontSize: '0.9rem' }}>{t.name}</strong>
-                                        </td>
-                                        <td>
-                                          <span className="class-pill" style={{ background: 'rgba(99, 102, 241, 0.2)', color: '#a5b4fc', borderColor: 'rgba(99, 102, 241, 0.4)', padding: '0.2rem 0.55rem', fontSize: '0.78rem' }}>
-                                            <BookOpen size={11} style={{ marginRight: '4px' }} />
-                                            {t.subject}
-                                          </span>
-                                        </td>
-                                        <td style={{ textAlign: 'center' }}>
-                                          <span style={{
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '0.3rem',
-                                            fontSize: '0.78rem',
-                                            fontWeight: '700',
-                                            padding: '0.2rem 0.6rem',
-                                            borderRadius: '10px',
-                                            background: isMax ? 'rgba(239, 68, 68, 0.2)' : assignedCount > 2 ? 'rgba(245, 158, 11, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-                                            color: isMax ? '#f87171' : assignedCount > 2 ? '#fbbf24' : '#4ade80',
-                                            border: isMax ? '1px solid rgba(239, 68, 68, 0.4)' : assignedCount > 2 ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid rgba(34, 197, 94, 0.4)'
-                                          }}>
-                                            {assignedCount} / {MAX_PERIODS_PER_TEACHER} {isMax ? '(FULL)' : 'Periods'}
-                                          </span>
-                                        </td>
-                                      </tr>
-                                    );
-                                  })
-                                ) : (
-                                  <tr>
-                                    <td colSpan="3" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
-                                      No teacher records found in MySQL database table.
-                                    </td>
-                                  </tr>
-                                )}
-                              </tbody>
-                            </table>
-                          </div>
+                {/* MODULE 1: TEACHER ALLOCATION TABLE + CLASS BOXES */}
+                {mod.id === 'module1' ? (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: showClassSidebar ? '1fr 280px' : '1fr', gap: 'var(--spacing-14)', minWidth: 0 }}>
+                      
+                      {/* Left: Teacher Directory Table */}
+                      <div style={{ background: 'var(--color-gallery-white)', borderRadius: 'var(--radius-cards)', border: '1px solid var(--color-hairline-silver)', padding: 'var(--spacing-20)', minWidth: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+                          <h4 style={{ color: 'var(--color-ink)', fontSize: '14px', fontWeight: '600', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Users size={15} color="var(--color-pricing-blue)" />
+                            <span>Teacher Directory & Workload</span>
+                          </h4>
+                          <span style={{ fontSize: '11px', background: 'var(--color-studio-mist)', color: 'var(--color-ink)', border: '1px solid var(--color-hairline-silver)', padding: '2px 8px', borderRadius: 'var(--radius-buttons)', fontWeight: '500' }}>
+                            {filteredTeachers.length} Active Faculty
+                          </span>
                         </div>
 
-                        {/* Right: 12 Class Boxes */}
-                        {showClassSidebar && (
-                          <div style={{ background: 'rgba(15, 23, 42, 0.7)', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.1)', padding: '1.25rem', minWidth: 0 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                              <h4 style={{ color: '#ffffff', fontSize: '1rem', fontWeight: '700', margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                <Building size={16} color="#38bdf8" />
-                                <span>Class Standards (1 to 12)</span>
-                              </h4>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '600' }}>12 Classes</span>
-                                <button
-                                  onClick={() => setShowClassSidebar(false)}
-                                  title="Hide Class Standards"
-                                  style={{
-                                    background: 'rgba(255, 255, 255, 0.08)',
-                                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                                    color: '#94a3b8',
-                                    borderRadius: '8px',
-                                    width: '28px',
-                                    height: '28px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    cursor: 'pointer'
-                                  }}
-                                >
-                                  <X size={14} />
-                                </button>
-                              </div>
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
-                              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => {
-                                const isSelected = selectedClass === num;
-                                return (
-                                  <button
-                                    key={num}
-                                    onClick={() => setSelectedClass(num)}
-                                    style={{
-                                      background: isSelected ? 'rgba(56, 189, 248, 0.25)' : 'rgba(30, 41, 59, 0.6)',
-                                      border: isSelected ? '1.5px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.1)',
-                                      borderRadius: '12px',
-                                      padding: '0.75rem 0.5rem',
-                                      textAlign: 'center',
-                                      cursor: 'pointer',
-                                      transition: 'all 0.15s ease',
-                                      boxShadow: isSelected ? '0 0 12px rgba(56, 189, 248, 0.3)' : 'none'
-                                    }}
-                                  >
-                                    <div style={{ fontSize: '0.68rem', color: isSelected ? '#38bdf8' : '#94a3b8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Class</div>
-                                    <div style={{ fontSize: '1.25rem', fontWeight: '800', color: '#ffffff', marginTop: '2px' }}>{num}</div>
-                                  </button>
-                                );
-                              })}
-                            </div>
-
-                            {selectedClass && (
-                              <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(56, 189, 248, 0.15)', border: '1.5px solid #38bdf8', borderRadius: '10px', fontSize: '0.82rem', color: '#38bdf8', textAlign: 'center', fontWeight: '700', boxShadow: '0 0 12px rgba(56, 189, 248, 0.3)' }}>
-                                ✓ Standard Class {selectedClass} Active
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* 3 SEPARATE STANDALONE CENTERED SECTION CARDS */}
-                      {selectedClass && (
-                        <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: '1.5rem', width: '100%', minWidth: 0, marginTop: '1.25rem', alignItems: 'start' }}>
-                          {/* Left Column: 36 Unique Classes Status Board */}
-                          <div
-                            style={{
-                              background: 'rgba(15, 23, 42, 0.75)',
-                              border: '1.5px solid rgba(56, 189, 248, 0.3)',
-                              borderRadius: '16px',
-                              padding: '1.25rem',
-                              boxSizing: 'border-box',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: '1rem',
-                              position: 'sticky',
-                              top: '20px',
-                              maxHeight: 'calc(100vh - 40px)',
-                              minWidth: 0
-                            }}
-                          >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <h4 style={{ color: '#ffffff', fontSize: '0.95rem', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                <Building size={16} color="#38bdf8" />
-                                <span>36 Classes Live Tracker</span>
-                              </h4>
-                            </div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                              <label style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                Selected Hour:
-                              </label>
-                              <select
-                                value={activePeriodTab}
-                                onChange={(e) => setActivePeriodTab(parseInt(e.target.value))}
-                                style={{
-                                  background: 'rgba(30, 41, 59, 0.9)',
-                                  color: '#ffffff',
-                                  border: '1.5px solid rgba(56, 189, 248, 0.4)',
-                                  borderRadius: '8px',
-                                  padding: '0.45rem',
-                                  fontSize: '0.82rem',
-                                  fontWeight: '600',
-                                  outline: 'none',
-                                  cursor: 'pointer',
-                                  width: '100%'
-                                }}
-                              >
-                                {PERIOD_TIMINGS.map((timing, idx) => (
-                                  <option key={idx} value={idx}>
-                                    Period {idx === 3 ? '4' : idx + (idx > 3 ? 0 : 1)} ({timing})
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', overflowY: 'auto', paddingRight: '0.25rem', flex: 1, scrollbarWidth: 'thin' }}>
-                              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((c) => (
-                                <div key={c} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                  <div style={{ width: '28px', color: '#64748b', fontSize: '0.72rem', fontWeight: '800', textAlign: 'center' }}>
-                                    C{c}
-                                  </div>
-                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.4rem', flex: 1 }}>
-                                    {[1, 2, 3].map((s) => {
-                                      const classroomInfo = classRooms.find(r => r.classCode === `CLS_${c}_SEC_${s}`);
-                                      const defaultRoom = classroomInfo?.roomNo || ('Room ' + (100 + (c - 1) * 3 + s));
-                                      
-                                      // Check if this defaultRoom is occupied by ANY class during the active hour
-                                      let occupyingClass = null;
-                                      let occupyingAssignment = null;
-                                      for (let oc = 1; oc <= 12; oc++) {
-                                        for (let os = 1; os <= 3; os++) {
-                                          const key = oc + '_' + os + '_' + activePeriodTab;
-                                          const asg = scheduleGrid[key];
-                                          if (asg && asg.room_no && asg.room_no.toLowerCase() === defaultRoom.toLowerCase()) {
-                                            occupyingClass = { c: oc, s: os };
-                                            occupyingAssignment = asg;
-                                            break;
-                                          }
-                                        }
-                                        if (occupyingClass) break;
-                                      }
-
-                                      const roomName = defaultRoom;
-                                      const isCurrentClass = selectedClass === c;
-                                      const isSelectedRoom = activeRoomClick?.roomNo === roomName;
-                                      
-                                      return (
-                                        <div
-                                          key={s}
-                                          onClick={() => {
-                                            setSelectedClass(c);
-                                            if (!occupyingClass) {
-                                              if (activeRoomClick?.roomNo === roomName) {
-                                                setActiveRoomClick(null);
-                                              } else {
-                                                setActiveRoomClick({ roomNo: roomName, classCode: `CLS_${c}_SEC_${s}` });
-                                                setActiveTeacherClick(null); // Clear teacher click selection if any
-                                              }
-                                            }
-                                          }}
-                                          draggable={!occupyingClass}
-                                          onDragStart={(e) => {
-                                            if (occupyingClass) {
-                                              e.preventDefault();
-                                              return;
-                                            }
-                                            e.dataTransfer.setData('text/plain', roomName);
-                                            e.dataTransfer.setData('application/room-transfer', JSON.stringify({ roomNo: roomName, classCode: `CLS_${c}_SEC_${s}` }));
-                                          }}
-                                          style={{
-                                            padding: '0.45rem',
-                                            background: isSelectedRoom
-                                              ? 'rgba(168, 85, 247, 0.15)'
-                                              : occupyingClass
-                                                ? 'rgba(239, 68, 68, 0.08)' 
-                                                : isCurrentClass 
-                                                  ? 'rgba(56, 189, 248, 0.12)' 
-                                                  : 'rgba(30, 41, 59, 0.5)',
-                                            border: isSelectedRoom
-                                              ? '2px solid #c084fc'
-                                              : occupyingClass
-                                                ? '1px solid rgba(239, 68, 68, 0.35)' 
-                                                : isCurrentClass 
-                                                  ? '1.5px solid #38bdf8' 
-                                                  : '1px solid rgba(255, 255, 255, 0.06)',
-                                            boxShadow: isSelectedRoom ? '0 0 14px rgba(168, 85, 247, 0.45)' : 'none',
-                                            borderRadius: '8px',
-                                            cursor: occupyingClass ? 'not-allowed' : isSelectedRoom ? 'pointer' : 'grab',
-                                            textAlign: 'center',
-                                            transition: 'all 0.15s ease'
-                                          }}
-                                          title={occupyingClass 
-                                            ? `Room ${roomName} occupied by Class ${occupyingClass.c} Sec ${occupyingClass.s === 1 ? 'A' : occupyingClass.s === 2 ? 'B' : 'C'}\nTeacher: ${occupyingAssignment.teacher || 'Unassigned'}`
-                                            : `Class ${c} Section ${s}\nRoom: ${roomName}\nStatus: Vacant`
-                                          }
-                                        >
-                                          <div style={{ fontSize: '0.74rem', color: '#ffffff', fontWeight: '800' }}>
-                                            {c}-{s === 1 ? 'A' : s === 2 ? 'B' : 'C'}
-                                          </div>
-                                          <div style={{ fontSize: '0.62rem', color: occupyingClass ? '#f87171' : '#38bdf8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px', fontWeight: '600' }}>
-                                            {roomName}
-                                          </div>
-                                          <div style={{ fontSize: '0.6rem', color: occupyingClass ? '#fca5a5' : '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>
-                                            {occupyingClass 
-                                              ? `${occupyingAssignment.teacher || 'Unassigned'}`
-                                              : 'Vacant'
-                                            }
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Right Column: Timetable Cards */}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
-                            {/* Date Selector & Day Display Bar */}
-                            <div
-                              style={{
-                                width: '100%',
-                                padding: '1.2rem 1.5rem',
-                                display: 'flex',
-                                justify: 'space-between',
-                                alignItems: 'center',
-                                flexWrap: 'wrap',
-                                gap: '1rem',
-                                background: 'rgba(15, 23, 42, 0.85)',
-                                border: '1.5px solid rgba(56, 189, 248, 0.3)',
-                                borderRadius: '16px',
-                                boxSizing: 'border-box'
-                              }}
-                            >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                              <Calendar size={20} color="#38bdf8" />
-                              <h4 style={{ color: '#ffffff', fontSize: '1.05rem', fontWeight: '700', margin: 0 }}>
-                                Class {selectedClass} Timetable Schedule — Live DB Sync Active
-                              </h4>
-                            </div>
-
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '12px', padding: '0.25rem 0.5rem' }}>
-                                 <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: '700', paddingLeft: '0.4rem' }}>Select Date:</span>
-                                 <input
-                                   type="date"
-                                   value={selectedDate}
-                                   onChange={(e) => setSelectedDate(e.target.value)}
-                                   style={{
-                                     background: 'transparent',
-                                     color: '#ffffff',
-                                     border: 'none',
-                                     borderRadius: '8px',
-                                     padding: '0.35rem 0.5rem',
-                                     fontSize: '0.82rem',
-                                     fontWeight: '600',
-                                     outline: 'none',
-                                     cursor: 'pointer'
-                                   }}
-                                 />
-                               </div>
-                               
-                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                 <button
-                                   onClick={handleNavigateYesterday}
-                                   style={{
-                                     background: 'rgba(30, 41, 59, 0.5)',
-                                     color: '#94a3b8',
-                                     border: '1px solid rgba(255, 255, 255, 0.08)',
-                                     borderRadius: '8px',
-                                     padding: '0.45rem 0.85rem',
-                                     fontSize: '0.82rem',
-                                     fontWeight: '600',
-                                     cursor: 'pointer',
-                                     transition: 'all 0.15s ease'
-                                   }}
-                                   onMouseEnter={(e) => {
-                                     e.target.style.background = 'rgba(30, 41, 59, 0.8)';
-                                     e.target.style.color = '#ffffff';
-                                   }}
-                                   onMouseLeave={(e) => {
-                                     e.target.style.background = 'rgba(30, 41, 59, 0.5)';
-                                     e.target.style.color = '#94a3b8';
-                                   }}
-                                 >
-                                   &lsaquo; Yesterday
-                                 </button>
-                                 <button
-                                   onClick={handleNavigateToday}
-                                   style={{
-                                     background: 'rgba(56, 189, 248, 0.12)',
-                                     color: '#38bdf8',
-                                     border: '1px solid rgba(56, 189, 248, 0.4)',
-                                     borderRadius: '8px',
-                                     padding: '0.45rem 0.85rem',
-                                     fontSize: '0.82rem',
-                                     fontWeight: '700',
-                                     cursor: 'pointer',
-                                     transition: 'all 0.15s ease'
-                                   }}
-                                   onMouseEnter={(e) => {
-                                     e.target.style.background = 'rgba(56, 189, 248, 0.2)';
-                                   }}
-                                   onMouseLeave={(e) => {
-                                     e.target.style.background = 'rgba(56, 189, 248, 0.12)';
-                                   }}
-                                 >
-                                   Today
-                                 </button>
-                                 <button
-                                   onClick={handleNavigateTomorrow}
-                                   style={{
-                                     background: 'rgba(30, 41, 59, 0.5)',
-                                     color: '#94a3b8',
-                                     border: '1px solid rgba(255, 255, 255, 0.08)',
-                                     borderRadius: '8px',
-                                     padding: '0.45rem 0.85rem',
-                                     fontSize: '0.82rem',
-                                     fontWeight: '600',
-                                     cursor: 'pointer',
-                                     transition: 'all 0.15s ease'
-                                   }}
-                                   onMouseEnter={(e) => {
-                                     e.target.style.background = 'rgba(30, 41, 59, 0.8)';
-                                     e.target.style.color = '#ffffff';
-                                   }}
-                                   onMouseLeave={(e) => {
-                                     e.target.style.background = 'rgba(30, 41, 59, 0.5)';
-                                     e.target.style.color = '#94a3b8';
-                                   }}
-                                 >
-                                   Tomorrow &rsaquo;
-                                 </button>
-                               </div>
-                               
-                               <span style={{ fontSize: '0.9rem', color: '#fde047', fontWeight: '700', background: 'rgba(253, 224, 71, 0.12)', border: '1px solid rgba(253, 224, 71, 0.3)', padding: '0.45rem 1rem', borderRadius: '10px' }}>
-                                 {getFormattedDateWithDay(selectedDate)}
-                               </span>
-                             </div>
-                          </div>
-
-                          {/* Quick Drag-and-Drop Teacher Board */}
-                          <div
-                            style={{
-                              width: '100%',
-                              padding: '1.25rem',
-                              background: 'rgba(15, 23, 42, 0.75)',
-                              border: '1.5px solid rgba(56, 189, 248, 0.3)',
-                              borderRadius: '16px',
-                              boxSizing: 'border-box'
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                              <h5 style={{ color: '#ffffff', fontSize: '0.9rem', fontWeight: '700', margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                <Users size={16} color="#38bdf8" />
-                                <span>Quick Drag-and-Drop Teacher Board</span>
-                              </h5>
-                              <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontStyle: 'italic' }}>
-                                Drag a teacher card directly into any period cell below
-                              </span>
-                            </div>
-                            
-                            <div 
-                              style={{ 
-                                display: 'flex', 
-                                gap: '1rem', 
-                                overflowX: 'auto', 
-                                paddingBottom: '0.5rem',
-                                scrollbarWidth: 'thin',
-                                scrollbarColor: 'rgba(56, 189, 248, 0.3) rgba(15, 23, 42, 0.5)'
-                              }}
-                            >
+                        <div style={{ width: '100%', overflowX: 'auto' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--color-ink)', fontSize: '13px' }}>
+                            <thead>
+                              <tr style={{ background: 'var(--color-paper-frost)', borderBottom: '1px solid var(--color-hairline-silver)', textTransform: 'uppercase', fontSize: '11px', color: 'var(--color-slate)', letterSpacing: '0.04em' }}>
+                                <th style={{ padding: '9px 12px', textAlign: 'left' }}>Teacher Name</th>
+                                <th style={{ padding: '9px 12px', textAlign: 'left' }}>Subject</th>
+                                <th style={{ padding: '9px 12px', textAlign: 'center' }}>Periods Assigned</th>
+                              </tr>
+                            </thead>
+                            <tbody>
                               {filteredTeachers.length > 0 ? (
-                                filteredTeachers.map((t) => {
+                                filteredTeachers.map((t, idx) => {
                                   const assignedCount = getTeacherAssignedCount(t.name);
                                   const isMax = assignedCount >= MAX_PERIODS_PER_TEACHER;
                                   const isSelected = activeTeacherClick?.id === t.id;
 
                                   return (
-                                    <div
-                                      key={'horiz_' + (t.id || t.userId || t.name)}
+                                    <tr
+                                      key={t.id || t.userId || t.name}
                                       draggable={!isMax}
                                       onDragStart={(e) => handleDragStart(e, t)}
                                       onClick={() => setActiveTeacherClick(isSelected ? null : t)}
                                       style={{
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: '0.4rem',
-                                        minWidth: '180px',
-                                        padding: '0.75rem 1rem',
-                                        background: isSelected 
-                                          ? 'rgba(56, 189, 248, 0.15)' 
-                                          : 'rgba(30, 41, 59, 0.7)',
-                                        border: isSelected 
-                                          ? '1.5px solid #38bdf8' 
-                                          : '1.5px solid rgba(255, 255, 255, 0.08)',
-                                        borderRadius: '12px',
                                         cursor: isMax ? 'not-allowed' : 'grab',
-                                        userSelect: 'none',
-                                        transition: 'all 0.2s ease',
-                                        boxShadow: isSelected ? '0 0 12px rgba(56, 189, 248, 0.2)' : 'none'
+                                        background: isSelected ? 'var(--color-studio-mist)' : idx % 2 === 0 ? 'var(--color-gallery-white)' : 'var(--color-studio-mist)',
+                                        borderBottom: '1px solid var(--color-control-gray)'
                                       }}
                                     >
-                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                        <span style={{ color: '#ffffff', fontSize: '0.85rem', fontWeight: '700', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '120px' }}>
-                                          {t.name}
+                                      <td style={{ padding: '9px 12px' }}>
+                                        <strong style={{ color: 'var(--color-ink)', fontSize: '13px' }}>{t.name}</strong>
+                                      </td>
+                                      <td style={{ padding: '9px 12px' }}>
+                                        <span style={{ background: 'var(--color-studio-mist)', color: 'var(--color-pricing-blue)', border: '1px solid var(--color-hairline-silver)', padding: '2px 8px', borderRadius: '8px', fontSize: '12px', fontWeight: '500' }}>
+                                          {t.subject}
                                         </span>
-                                        <span 
-                                          style={{
-                                            fontSize: '0.7rem',
-                                            fontWeight: '700',
-                                            padding: '0.1rem 0.4rem',
-                                            borderRadius: '6px',
-                                            background: isMax ? 'rgba(239, 68, 68, 0.2)' : assignedCount > 3 ? 'rgba(245, 158, 11, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-                                            color: isMax ? '#f87171' : assignedCount > 3 ? '#fbbf24' : '#4ade80',
-                                            border: isMax ? '1px solid rgba(239, 68, 68, 0.4)' : assignedCount > 3 ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid rgba(34, 197, 94, 0.4)'
-                                          }}
-                                        >
-                                          {assignedCount}/{MAX_PERIODS_PER_TEACHER}
+                                      </td>
+                                      <td style={{ padding: '9px 12px', textAlign: 'center' }}>
+                                        <span style={{
+                                          fontSize: '11px',
+                                          fontWeight: '600',
+                                          padding: '2px 8px',
+                                          borderRadius: '8px',
+                                          background: isMax ? 'var(--color-studio-mist)' : 'var(--color-studio-mist)',
+                                          color: isMax ? 'var(--color-launch-orange)' : 'var(--color-ink)',
+                                          border: '1px solid var(--color-hairline-silver)'
+                                        }}>
+                                          {assignedCount} / {MAX_PERIODS_PER_TEACHER} {isMax ? '(FULL)' : 'Periods'}
                                         </span>
-                                      </div>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#a5b4fc', fontSize: '0.72rem' }}>
-                                        <BookOpen size={10} />
-                                        <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{t.subject}</span>
-                                      </div>
-                                    </div>
+                                      </td>
+                                    </tr>
                                   );
                                 })
                               ) : (
-                                <div style={{ color: '#94a3b8', fontSize: '0.82rem', padding: '0.5rem 0' }}>
-                                  No teacher records found in MySQL database.
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Render Section 1, Section 2, Section 3 Cards */}
-                          {[1, 2, 3].map((sectionNum) => {
-                             const classroomInfo = classRooms.find(r => r.classCode === `CLS_${selectedClass}_SEC_${sectionNum}`);
-                             return (
-                               <div
-                                 key={sectionNum}
-                                 style={{
-                                   width: '100%',
-                                   padding: '1.25rem 1.5rem',
-                                   display: 'flex',
-                                   flexDirection: 'column',
-                                   gap: '1rem',
-                                   border: sectionNum === 1 ? '1.5px solid rgba(56, 189, 248, 0.35)' : sectionNum === 2 ? '1.5px solid rgba(168, 85, 247, 0.35)' : '1.5px solid rgba(74, 222, 128, 0.35)',
-                                   background: 'linear-gradient(145deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.8))',
-                                   borderRadius: '16px',
-                                   boxSizing: 'border-box',
-                                   minWidth: 0
-                                 }}
-                               >
-                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                   <h4 style={{ color: '#ffffff', fontSize: '1.15rem', fontWeight: '800', margin: 0 }}>
-                                     Class {selectedClass} — Section {sectionNum} Schedule ({getFormattedDateWithDay(selectedDate)})
-                                   </h4>
-                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                     {classroomInfo && (
-                                       <div style={{ 
-                                         display: 'inline-flex', 
-                                         alignItems: 'center', 
-                                         gap: '0.4rem', 
-                                         background: 'rgba(255, 255, 255, 0.06)', 
-                                         border: '1.5px solid rgba(255, 255, 255, 0.12)', 
-                                         padding: '0.25rem 0.65rem', 
-                                         borderRadius: '10px', 
-                                         fontSize: '0.74rem', 
-                                         color: '#cbd5e1',
-                                         fontWeight: '600'
-                                       }}>
-                                         <span>🏫 Room: <strong style={{ color: '#38bdf8' }}>{classroomInfo.roomNo || 'N/A'}</strong></span>
-                                         <span style={{ color: 'rgba(255, 255, 255, 0.15)' }}>|</span>
-                                         <span>👥 Cap: <strong style={{ color: '#4ade80' }}>{classroomInfo.capacity || 40}</strong></span>
-                                       </div>
-                                     )}
-                                     <span style={{ fontSize: '0.75rem', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.35)', padding: '0.2rem 0.75rem', borderRadius: '12px', fontWeight: '700' }}>
-                                       CLS_{selectedClass}_SEC_{sectionNum} • Section {sectionNum}
-                                     </span>
-                                   </div>
-                                 </div>
-
-                              <div style={{ width: '100%', overflowX: 'auto', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.1)', background: 'rgba(15, 23, 42, 0.7)' }}>
-                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '0.82rem', minWidth: '700px' }}>
-                                  <thead>
-                                    <tr style={{ background: 'rgba(30, 41, 59, 0.9)', borderBottom: '1.5px solid rgba(56, 189, 248, 0.4)' }}>
-                                      <th style={{ padding: '0.75rem 0.85rem', color: '#64748b', fontWeight: '800', fontSize: '0.75rem', textTransform: 'uppercase', textAlign: 'left', minWidth: '120px' }}>
-                                        TIMING
-                                      </th>
-                                      {['9-10', '10-11', '11-12', '12-01 (Lunch)', '01-02', '02-03', '03-04', '04-05'].map((t) => (
-                                        <th
-                                          key={t}
-                                          style={{
-                                            padding: '0.75rem 0.6rem',
-                                            color: t.includes('Lunch') ? '#fde047' : '#38bdf8',
-                                            fontWeight: '800',
-                                            fontSize: '0.82rem',
-                                            borderLeft: '1px solid rgba(255, 255, 255, 0.08)',
-                                            minWidth: '95px',
-                                            background: t.includes('Lunch') ? 'rgba(253, 224, 71, 0.1)' : 'transparent'
-                                          }}
-                                        >
-                                          {t}
-                                        </th>
-                                      ))}
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {['room_no', 'teacher', 'sub'].map((rowKey, rIdx) => (
-                                      <tr key={rowKey} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                                        <td style={{ padding: '0.75rem 0.85rem', color: rIdx === 0 ? '#38bdf8' : rIdx === 1 ? '#94a3b8' : '#fde047', fontWeight: '800', textAlign: 'left', background: 'rgba(15, 23, 42, 0.4)' }}>
-                                          {rowKey}
-                                        </td>
-                                        {[0, 1, 2, 3, 4, 5, 6, 7].map((colIdx) => {
-                                          const isLunch = colIdx === 3;
-                                          const cellKey = selectedClass + '_' + sectionNum + '_' + colIdx;
-                                          const unit = scheduleGrid[cellKey];
-                                          const val = unit ? unit[rowKey] : null;
-
-                                          return (
-                                            <td
-                                              key={colIdx}
-                                              onDragOver={(e) => e.preventDefault()}
-                                              onDragEnter={(e) => {
-                                                e.preventDefault();
-                                                if (colIdx !== 3 && activePeriodTab !== colIdx) {
-                                                  setActivePeriodTab(colIdx);
-                                                }
-                                              }}
-                                              onDrop={(e) => {
-                                                e.preventDefault();
-                                                const rawRoom = e.dataTransfer.getData('application/room-transfer');
-                                                const rawTeacher = e.dataTransfer.getData('application/json');
-                                                if (rawRoom) {
-                                                  handleDropRoom(sectionNum, colIdx, JSON.parse(rawRoom));
-                                                } else if (rawTeacher) {
-                                                  handleDrop(sectionNum, colIdx, JSON.parse(rawTeacher));
-                                                }
-                                              }}
-                                              onClick={() => {
-                                                if (colIdx !== 3 && activePeriodTab !== colIdx) {
-                                                  setActivePeriodTab(colIdx);
-                                                }
-                                                if (activeTeacherClick) {
-                                                  assignTeacherToCell(sectionNum, colIdx, activeTeacherClick);
-                                                } else if (activeRoomClick) {
-                                                  assignRoomToCell(sectionNum, colIdx, activeRoomClick);
-                                                }
-                                              }}
-                                              style={{
-                                                padding: '0.4rem 0.5rem',
-                                                borderLeft: '1px solid rgba(255, 255, 255, 0.05)',
-                                                height: '42px',
-                                                background: isLunch
-                                                  ? 'rgba(253, 224, 71, 0.08)'
-                                                  : (unit ? 'rgba(56, 189, 248, 0.08)' : 'transparent'),
-                                                cursor: isLunch ? 'not-allowed' : 'pointer'
-                                              }}
-                                            >
-                                              {isLunch ? (
-                                                rIdx === 0 ? (
-                                                  <span style={{ color: '#fde047', fontWeight: '700', fontSize: '0.78rem' }}>— Lunch —</span>
-                                                ) : rIdx === 1 ? (
-                                                  <span style={{ color: '#fde047', fontWeight: '700', fontSize: '0.78rem' }}>☕ Lunch Break</span>
-                                                ) : (
-                                                  <span style={{ color: '#fcd34d', fontWeight: '700', fontSize: '0.75rem' }}>Recess</span>
-                                                )
-                                              ) : rIdx === 0 ? (
-                                                <div
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (activeRoomClick) {
-                                                      assignRoomToCell(sectionNum, colIdx, activeRoomClick);
-                                                    } else {
-                                                      handleEditRoomNumber(sectionNum, colIdx);
-                                                    }
-                                                  }}
-                                                  title="Click to Edit Room Number"
-                                                  style={{
-                                                    display: 'inline-flex',
-                                                    alignItems: 'center',
-                                                    gap: '0.25rem',
-                                                    cursor: 'pointer',
-                                                    padding: '0.15rem 0.4rem',
-                                                    borderRadius: '6px',
-                                                    background: 'rgba(56, 189, 248, 0.12)',
-                                                    border: '1px solid rgba(56, 189, 248, 0.3)'
-                                                  }}
-                                                >
-                                                  <span style={{ color: val ? '#38bdf8' : '#64748b', fontWeight: val ? '700' : '500', fontSize: '0.78rem' }}>
-                                                    {val || '—'}
-                                                  </span>
-                                                  <Edit2 size={10} color="#38bdf8" />
-                                                </div>
-                                              ) : val ? (
-                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}>
-                                                  <span style={{ color: rIdx === 1 ? '#4ade80' : '#fde047', fontWeight: '700', fontSize: '0.78rem' }}>
-                                                    {val}
-                                                  </span>
-                                                  {rIdx === 2 && (
-                                                    <button
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        clearPeriodUnit(sectionNum, colIdx);
-                                                      }}
-                                                      title="Clear period unit"
-                                                      style={{
-                                                        background: 'rgba(239, 68, 68, 0.2)',
-                                                        border: '1px solid rgba(239, 68, 68, 0.4)',
-                                                        color: '#f87171',
-                                                        borderRadius: '50%',
-                                                        width: '16px',
-                                                        height: '16px',
-                                                        cursor: 'pointer',
-                                                        fontSize: '0.65rem',
-                                                        display: 'inline-flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center'
-                                                      }}
-                                                    >
-                                                      <X size={10} />
-                                                    </button>
-                                                  )}
-                                                </div>
-                                              ) : (
-                                                rIdx === 1 ? (
-                                                  <span style={{ color: 'rgba(148, 163, 184, 0.3)', fontSize: '0.7rem' }}>
-                                                    + Drop
-                                                  </span>
-                                                ) : null
-                                              )}
-                                            </td>
-                                          );
-                                        })}
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                                </div>
-                              </div>
-                            );
-                          })}
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  ) : mod.id === 'module2' ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%', minWidth: 0 }}>
-                      {/* Top Statistics Cards */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', width: '100%' }}>
-                        <div style={{ background: 'rgba(15, 23, 42, 0.7)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '14px', padding: '1rem' }}>
-                          <div style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '700' }}>TOTAL STUDENTS</div>
-                          <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#ffffff', marginTop: '4px' }}>{studentsList.length}</div>
-                        </div>
-
-                        <div style={{ background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: '14px', padding: '1rem' }}>
-                          <div style={{ fontSize: '0.75rem', color: '#4ade80', textTransform: 'uppercase', fontWeight: '700' }}>ACCEPTED</div>
-                          <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#4ade80', marginTop: '4px' }}>
-                            {studentsList.filter(s => s.status === 'ACCEPTED').length}
-                          </div>
-                        </div>
-
-                        <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '14px', padding: '1rem' }}>
-                          <div style={{ fontSize: '0.75rem', color: '#f87171', textTransform: 'uppercase', fontWeight: '700' }}>REJECTED</div>
-                          <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#f87171', marginTop: '4px' }}>
-                            {studentsList.filter(s => s.status === 'REJECTED').length}
-                          </div>
-                        </div>
-
-                        <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '14px', padding: '1rem' }}>
-                          <div style={{ fontSize: '0.75rem', color: '#fbbf24', textTransform: 'uppercase', fontWeight: '700' }}>PENDING</div>
-                          <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#fbbf24', marginTop: '4px' }}>
-                            {studentsList.filter(s => s.status === 'PENDING').length}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Filter & Search Bar */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', background: 'rgba(15, 23, 42, 0.6)', padding: '0.85rem 1.2rem', borderRadius: '14px', border: '1px solid rgba(255, 255, 255, 0.08)', width: '100%', boxSizing: 'border-box' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flex: 1, minWidth: '220px' }}>
-                          <div style={{ position: 'relative', width: '100%' }}>
-                            <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-                            <input
-                              type="text"
-                              placeholder="Search by Student ID, Name, Username, Parent Name, Email..."
-                              value={studentSearchQuery}
-                              onChange={(e) => setStudentSearchQuery(e.target.value)}
-                              className="form-input"
-                              style={{ paddingLeft: '2.3rem', width: '100%', fontSize: '0.85rem' }}
-                            />
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <select
-                            value={studentStatusFilter}
-                            onChange={(e) => setStudentStatusFilter(e.target.value)}
-                            style={{
-                              background: 'rgba(30, 41, 59, 0.8)',
-                              color: '#ffffff',
-                              border: '1px solid rgba(255, 255, 255, 0.15)',
-                              borderRadius: '10px',
-                              padding: '0.5rem 0.85rem',
-                              fontSize: '0.85rem',
-                              fontWeight: '600',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            <option value="ALL">All Statuses</option>
-                            <option value="ACCEPTED">ACCEPTED</option>
-                            <option value="REJECTED">REJECTED</option>
-                            <option value="PENDING">PENDING</option>
-                          </select>
-
-                          <button
-                            onClick={fetchStudents}
-                            disabled={studentsLoading}
-                            style={{
-                              background: 'rgba(16, 185, 129, 0.15)',
-                              color: '#34d399',
-                              border: '1px solid rgba(16, 185, 129, 0.35)',
-                              borderRadius: '10px',
-                              padding: '0.5rem 0.9rem',
-                              fontSize: '0.82rem',
-                              fontWeight: '700',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.4rem'
-                            }}
-                          >
-                            <RefreshCw size={14} className={studentsLoading ? 'spin' : ''} />
-                            <span>{studentsLoading ? 'Refreshing...' : 'Refresh Data'}</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Students Data Table */}
-                      <div className="table-wrapper" style={{ width: '100%', overflowX: 'auto', background: 'rgba(15, 23, 42, 0.7)', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.1)', boxSizing: 'border-box' }}>
-                        <table className="portal-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '750px' }}>
-                          <thead>
-                            <tr style={{ background: 'rgba(30, 41, 59, 0.9)', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                              <th style={{ padding: '0.85rem 1rem', color: '#94a3b8', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase' }}>STUDENT ID</th>
-                              <th style={{ padding: '0.85rem 1rem', color: '#94a3b8', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase' }}>FIRST NAME</th>
-                              <th style={{ padding: '0.85rem 1rem', color: '#94a3b8', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase' }}>LAST NAME</th>
-                              <th style={{ padding: '0.85rem 1rem', color: '#94a3b8', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase' }}>USER NAME</th>
-                              <th style={{ padding: '0.85rem 1rem', color: '#94a3b8', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase' }}>PARENT NAME</th>
-                              <th style={{ padding: '0.85rem 1rem', color: '#94a3b8', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase' }}>EMAIL</th>
-                              <th style={{ padding: '0.85rem 1rem', color: '#94a3b8', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase' }}>STATUS</th>
-                              <th style={{ padding: '0.85rem 1rem', color: '#94a3b8', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', textAlign: 'center' }}>ACTIONS</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {studentsLoading ? (
-                              <tr>
-                                <td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
-                                  Loading students data...
-                                </td>
-                              </tr>
-                            ) : studentsList.filter(item => {
-                              const q = studentSearchQuery.toLowerCase();
-                              const stuId = (item.admissionId || ('ADM-' + item.id)).toLowerCase();
-                              const fName = (item.firstName || '').toLowerCase();
-                              const lName = (item.lastName || '').toLowerCase();
-                              const uName = (item.username || item.childName || '').toLowerCase();
-                              const pName = (item.parentName || '').toLowerCase();
-                              const pEmail = (item.parentEmail || item.email || '').toLowerCase();
-                              const matchesQuery = stuId.includes(q) || fName.includes(q) || lName.includes(q) || uName.includes(q) || pName.includes(q) || pEmail.includes(q);
-                              const matchesStatus = studentStatusFilter === 'ALL' || item.status === studentStatusFilter;
-                              return matchesQuery && matchesStatus;
-                            }).length === 0 ? (
-                              <tr>
-                                <td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
-                                  No student records found matching search or filter criteria.
-                                </td>
-                              </tr>
-                            ) : (
-                              studentsList
-                                .filter(item => {
-                                  const q = studentSearchQuery.toLowerCase();
-                                  const stuId = (item.admissionId || ('ADM-' + item.id)).toLowerCase();
-                                  const fName = (item.firstName || '').toLowerCase();
-                                  const lName = (item.lastName || '').toLowerCase();
-                                  const uName = (item.username || item.childName || '').toLowerCase();
-                                  const pName = (item.parentName || '').toLowerCase();
-                                  const pEmail = (item.parentEmail || item.email || '').toLowerCase();
-                                  const matchesQuery = stuId.includes(q) || fName.includes(q) || lName.includes(q) || uName.includes(q) || pName.includes(q) || pEmail.includes(q);
-                                  const matchesStatus = studentStatusFilter === 'ALL' || item.status === studentStatusFilter;
-                                  return matchesQuery && matchesStatus;
-                                })
-                                .map((stu) => {
-                                  const stuId = stu.admissionId || ('ADM-' + stu.id);
-                                  const uName = stu.username || (stu.childName ? stu.childName.toLowerCase().replace(/\s+/g, '_') : stu.firstName ? stu.firstName.toLowerCase() : 'student');
-                                  const pName = stu.parentName || ((stu.firstName || '') + ' ' + (stu.lastName || '')).trim();
-                                  const pEmail = stu.parentEmail || stu.email || (uName + '@school.com');
-
-                                  return (
-                                    <tr key={stu.id} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)', transition: 'background 0.15s ease' }}>
-                                      <td style={{ padding: '0.85rem 1rem' }}>
-                                        <span style={{ fontSize: '0.82rem', fontWeight: '700', color: '#38bdf8', background: 'rgba(56, 189, 248, 0.15)', padding: '0.25rem 0.6rem', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
-                                          {stuId}
-                                        </span>
-                                      </td>
-                                      <td style={{ padding: '0.85rem 1rem', color: '#ffffff', fontWeight: '600', fontSize: '0.88rem' }}>
-                                        {stu.firstName || '—'}
-                                      </td>
-                                      <td style={{ padding: '0.85rem 1rem', color: '#ffffff', fontWeight: '600', fontSize: '0.88rem' }}>
-                                        {stu.lastName || '—'}
-                                      </td>
-                                      <td style={{ padding: '0.85rem 1rem', color: '#a5b4fc', fontSize: '0.85rem', fontWeight: '600' }}>
-                                        @{uName}
-                                      </td>
-                                      <td style={{ padding: '0.85rem 1rem', color: '#e2e8f0', fontSize: '0.85rem' }}>
-                                        {pName}
-                                      </td>
-                                      <td style={{ padding: '0.85rem 1rem', color: '#94a3b8', fontSize: '0.83rem' }}>
-                                        {pEmail}
-                                      </td>
-                                      <td style={{ padding: '0.85rem 1rem' }}>
-                                        {stu.status === 'ACCEPTED' ? (
-                                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', border: '1px solid rgba(34, 197, 94, 0.3)', padding: '0.25rem 0.65rem', borderRadius: '12px', fontSize: '0.78rem', fontWeight: '700' }}>
-                                            <CheckCircle2 size={13} />
-                                            ACCEPTED
-                                          </span>
-                                        ) : stu.status === 'REJECTED' ? (
-                                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '0.25rem 0.65rem', borderRadius: '12px', fontSize: '0.78rem', fontWeight: '700' }}>
-                                            <XCircle size={13} />
-                                            REJECTED
-                                          </span>
-                                        ) : (
-                                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '0.25rem 0.65rem', borderRadius: '12px', fontSize: '0.78rem', fontWeight: '700' }}>
-                                            <Clock size={13} />
-                                            PENDING
-                                          </span>
-                                        )}
-                                      </td>
-                                      <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
-                                        <span style={{ 
-                                          fontSize: '0.78rem', 
-                                          fontWeight: '700', 
-                                          color: stu.status === 'ACCEPTED' 
-                                            ? '#4ade80' 
-                                            : stu.status === 'REJECTED' 
-                                              ? '#f87171' 
-                                              : '#fbbf24',
-                                          background: stu.status === 'ACCEPTED' 
-                                            ? 'rgba(34, 197, 94, 0.1)' 
-                                            : stu.status === 'REJECTED' 
-                                              ? 'rgba(239, 68, 68, 0.1)' 
-                                              : 'rgba(245, 158, 11, 0.1)',
-                                          border: stu.status === 'ACCEPTED' 
-                                            ? '1px solid rgba(34, 197, 94, 0.25)' 
-                                            : stu.status === 'REJECTED' 
-                                              ? '1px solid rgba(239, 68, 68, 0.25)' 
-                                              : '1px solid rgba(245, 158, 11, 0.25)',
-                                          padding: '0.25rem 0.65rem',
-                                          borderRadius: '8px'
-                                        }}>
-                                          {stu.status === 'ACCEPTED' 
-                                            ? 'Accepted' 
-                                            : stu.status === 'REJECTED' 
-                                              ? 'Rejected' 
-                                              : 'Pending'}
-                                        </span>
-                                      </td>
-                                    </tr>
-                                  );
-                                })
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  ) : mod.id === 'module3' ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%', minWidth: 0 }}>
-                      
-                      {/* Class Selection Filter Row */}
-                      <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1.5px solid rgba(245, 158, 11, 0.3)', borderRadius: '16px', padding: '1.25rem', boxSizing: 'border-box' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                          <h5 style={{ color: '#ffffff', fontSize: '0.9rem', fontWeight: '700', margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                            <Building size={16} color="#f59e0b" />
-                            <span>Select Class Standard</span>
-                          </h5>
-                          <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontStyle: 'italic' }}>
-                            Select Grade 1-12
-                          </span>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => {
-                            const isSelected = mod3SelectedClass === num;
-                            return (
-                              <button
-                                key={num}
-                                onClick={() => setMod3SelectedClass(num)}
-                                style={{
-                                  background: isSelected ? 'rgba(245, 158, 11, 0.2)' : 'rgba(30, 41, 59, 0.6)',
-                                  border: isSelected ? '1.5px solid #f59e0b' : '1px solid rgba(255, 255, 255, 0.08)',
-                                  borderRadius: '10px',
-                                  padding: '0.55rem 0.25rem',
-                                  color: isSelected ? '#f59e0b' : '#94a3b8',
-                                  fontWeight: '800',
-                                  fontSize: '0.82rem',
-                                  textAlign: 'center',
-                                  cursor: 'pointer',
-                                  transition: 'all 0.15s ease'
-                                }}
-                              >
-                                C{num}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Section, Month/Year & Search Controls Row */}
-                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                          
-                          {/* Section selector */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '12px', padding: '0.3rem 0.5rem' }}>
-                            <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: '700', paddingLeft: '0.4rem', marginRight: '0.2rem' }}>Section:</span>
-                            {['A', 'B', 'C'].map((sec) => {
-                              const isSelected = mod3SelectedSection === sec;
-                              return (
-                                <button
-                                  key={sec}
-                                  onClick={() => setMod3SelectedSection(sec)}
-                                  style={{
-                                    background: isSelected ? 'rgba(245, 158, 11, 0.2)' : 'transparent',
-                                    color: isSelected ? '#f59e0b' : '#94a3b8',
-                                    border: isSelected ? '1px solid rgba(245, 158, 11, 0.4)' : 'none',
-                                    borderRadius: '8px',
-                                    padding: '0.3rem 0.75rem',
-                                    fontSize: '0.8rem',
-                                    fontWeight: '700',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.15s ease'
-                                  }}
-                                >
-                                  {sec}
-                                </button>
-                              );
-                            })}
-                          </div>
-
-                          {/* Month Selector */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '12px', padding: '0.3rem 0.5rem' }}>
-                            <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: '700', paddingLeft: '0.4rem' }}>Month:</span>
-                            <select
-                              value={mod3SelectedMonth}
-                              onChange={(e) => setMod3SelectedMonth(parseInt(e.target.value))}
-                              style={{ background: 'rgba(30, 41, 59, 0.9)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '8px', padding: '0.2rem 0.4rem', fontSize: '0.78rem', fontWeight: '700', outline: 'none', cursor: 'pointer' }}
-                            >
-                              {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((mName, mIdx) => (
-                                <option key={mIdx + 1} value={mIdx + 1}>{mName}</option>
-                              ))}
-                            </select>
-                            <select
-                              value={mod3SelectedYear}
-                              onChange={(e) => setMod3SelectedYear(parseInt(e.target.value))}
-                              style={{ background: 'rgba(30, 41, 59, 0.9)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '8px', padding: '0.2rem 0.4rem', fontSize: '0.78rem', fontWeight: '700', outline: 'none', cursor: 'pointer', marginLeft: '0.2rem' }}
-                            >
-                              {[2025, 2026, 2027, 2028].map(yr => (
-                                <option key={yr} value={yr}>{yr}</option>
-                              ))}
-                            </select>
-                          </div>
-                          
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                          {/* Search Input */}
-                          <div style={{ position: 'relative', minWidth: '240px' }}>
-                            <Search size={15} color="#94a3b8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-                            <input
-                              type="text"
-                              placeholder="Search student name or ID..."
-                              value={mod3SearchQuery}
-                              onChange={(e) => setMod3SearchQuery(e.target.value)}
-                              className="form-input"
-                              style={{ paddingLeft: '2.2rem', padding: '0.45rem 0.75rem 0.45rem 2.2rem', fontSize: '0.85rem', width: '100%' }}
-                            />
-                          </div>
-
-                          {/* Quick Strength Display Badge */}
-                          <span style={{ fontSize: '0.8rem', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '0.45rem 1rem', borderRadius: '10px', fontWeight: '700' }}>
-                            Strength: {mod3Students.length} Students
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Associated Class Faculty & Subjects */}
-                      {(() => {
-                        const associatedFaculty = getClassFaculty();
-                        if (associatedFaculty.length === 0) return null;
-                        return (
-                          <div style={{
-                            background: 'rgba(30, 41, 59, 0.4)',
-                            border: '1px solid rgba(245, 158, 11, 0.2)',
-                            borderRadius: '12px',
-                            padding: '0.85rem 1.25rem',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '0.5rem',
-                            boxSizing: 'border-box'
-                          }}>
-                            <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                              Associated Class Faculty & Subjects
-                            </span>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                              {associatedFaculty.map((fac, idx) => (
-                                <span key={idx} style={{
-                                  background: 'rgba(245, 158, 11, 0.1)',
-                                  color: '#f59e0b',
-                                  border: '1px solid rgba(245, 158, 11, 0.25)',
-                                  padding: '0.25rem 0.65rem',
-                                  borderRadius: '8px',
-                                  fontSize: '0.78rem',
-                                  fontWeight: '700',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '0.3rem'
-                                }}>
-                                  <strong style={{ color: '#ffffff' }}>{fac.teacher}</strong> ({fac.subject})
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      {/* Students List Directory Table */}
-                      <div style={{ background: 'rgba(15, 23, 42, 0.7)', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.1)', padding: '1.25rem', minWidth: 0 }}>
-                        <div className="table-wrapper" style={{ width: '100%', overflowX: 'auto' }}>
-                          <table className="portal-table" style={{ width: '100%' }}>
-                            <thead>
-                              <tr>
-                                <th style={{ padding: '0.85rem 1rem', textAlign: 'left' }}>Student ID</th>
-                                <th style={{ padding: '0.85rem 1rem', textAlign: 'left' }}>Student Name</th>
-                                <th style={{ padding: '0.85rem 1rem', textAlign: 'left' }}>Parent Name</th>
-                                <th style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>Present Days</th>
-                                <th style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>Absent Days</th>
-                                <th style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>Attendance %</th>
-                                <th style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {mod3Loading ? (
                                 <tr>
-                                  <td colSpan={7} style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                                      <RefreshCw size={24} className="spin" color="#f59e0b" />
-                                      <span style={{ fontSize: '0.85rem', fontWeight: '600' }}>Fetching Student database details...</span>
-                                    </div>
+                                  <td colSpan="3" style={{ textAlign: 'center', padding: '20px', color: 'var(--color-slate)' }}>
+                                    No teacher records found in MySQL database table.
                                   </td>
                                 </tr>
-                              ) : (
-                                (() => {
-                                  const filtered = mod3Students.filter(s =>
-                                    s.firstName.toLowerCase().includes(mod3SearchQuery.toLowerCase()) ||
-                                    s.lastName.toLowerCase().includes(mod3SearchQuery.toLowerCase()) ||
-                                    s.studentId.toLowerCase().includes(mod3SearchQuery.toLowerCase()) ||
-                                    s.parentName.toLowerCase().includes(mod3SearchQuery.toLowerCase())
-                                  );
-
-                                  if (filtered.length === 0) {
-                                    return (
-                                      <tr>
-                                        <td colSpan={7} style={{ padding: '3rem', textAlign: 'center', color: '#64748b', fontSize: '0.85rem' }}>
-                                          No matching student details found for Class {mod3SelectedClass} Section {mod3SelectedSection}.
-                                        </td>
-                                      </tr>
-                                    );
-                                  }
-
-                                  return filtered.map((stu) => {
-                                    const studentRecs = mod3AttendanceRecords.filter(r => r.studentId === stu.studentId);
-                                    const presentCount = studentRecs.filter(r => r.status === 'PRESENT').length;
-                                    const absentCount = studentRecs.filter(r => r.status === 'ABSENT').length;
-                                    const totalDays = studentRecs.length;
-                                    const percentage = totalDays > 0 ? Math.round((presentCount / totalDays) * 100) + '%' : '0%';
-
-                                    return (
-                                      <tr key={stu.id} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)', transition: 'background 0.15s ease' }}>
-                                        <td style={{ padding: '0.85rem 1rem', fontWeight: '700' }}>
-                                          <span style={{ background: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '8px', fontSize: '0.78rem' }}>
-                                            {stu.studentId}
-                                          </span>
-                                        </td>
-                                        <td style={{ padding: '0.85rem 1rem', color: '#ffffff', fontWeight: '600', fontSize: '0.85rem' }}>
-                                          {stu.firstName} {stu.lastName}
-                                        </td>
-                                        <td style={{ padding: '0.85rem 1rem', color: '#e2e8f0', fontSize: '0.85rem' }}>
-                                          {stu.parentName}
-                                        </td>
-                                        <td style={{ padding: '0.85rem 1rem', textAlign: 'center', color: '#10b981', fontWeight: '700', fontSize: '0.85rem' }}>
-                                          {presentCount} Days
-                                        </td>
-                                        <td style={{ padding: '0.85rem 1rem', textAlign: 'center', color: '#f87171', fontWeight: '700', fontSize: '0.85rem' }}>
-                                          {absentCount} Days
-                                        </td>
-                                        <td style={{ padding: '0.85rem 1rem', textAlign: 'center', fontWeight: '800' }}>
-                                          <span style={{
-                                            background: totalDays === 0 ? 'rgba(255, 255, 255, 0.05)' : parseInt(percentage) >= 75 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                                            color: totalDays === 0 ? '#94a3b8' : parseInt(percentage) >= 75 ? '#10b981' : '#f87171',
-                                            border: totalDays === 0 ? '1px solid rgba(255, 255, 255, 0.1)' : parseInt(percentage) >= 75 ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
-                                            padding: '0.25rem 0.6rem',
-                                            borderRadius: '6px',
-                                            fontSize: '0.75rem'
-                                          }}>
-                                            {totalDays === 0 ? 'No Logs' : percentage}
-                                          </span>
-                                        </td>
-                                        <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
-                                          <button
-                                            onClick={() => {
-                                              setSelectedStudentDetail(stu);
-                                              setDetailModalMonth(mod3SelectedMonth);
-                                              setDetailModalYear(mod3SelectedYear);
-                                            }}
-                                            style={{
-                                              background: 'rgba(245, 158, 11, 0.15)',
-                                              color: '#f59e0b',
-                                              border: '1px solid rgba(245, 158, 11, 0.3)',
-                                              padding: '0.35rem 0.75rem',
-                                              borderRadius: '8px',
-                                              fontSize: '0.8rem',
-                                              fontWeight: '700',
-                                              cursor: 'pointer',
-                                              transition: 'all 0.15s ease'
-                                            }}
-                                          >
-                                            View Log
-                                          </button>
-                                        </td>
-                                      </tr>
-                                    );
-                                  });
-                                })()
                               )}
                             </tbody>
                           </table>
                         </div>
                       </div>
-                    </div>
-                  ) : mod.id === 'module4' ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%' }}>
-                      
-                      {/* Top Selection Filters Bar */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', background: 'rgba(15, 23, 42, 0.5)', border: '1px solid rgba(255, 255, 255, 0.08)', padding: '0.85rem 1.25rem', borderRadius: '16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem', flexWrap: 'wrap' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span style={{ color: '#ec4899', fontSize: '0.85rem', fontWeight: '700' }}>Select Class Standard:</span>
-                            <select
-                              value={mod4SelectedClass}
-                              onChange={(e) => setMod4SelectedClass(parseInt(e.target.value))}
-                              style={{ background: 'rgba(15, 23, 42, 0.95)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '8px', padding: '0.35rem 0.6rem', color: '#ffffff', fontWeight: '700', outline: 'none', cursor: 'pointer' }}
-                            >
-                              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(c => (
-                                <option key={c} value={c}>{c} Standard</option>
-                              ))}
-                            </select>
+
+                      {/* Right: 12 Class Boxes */}
+                      {showClassSidebar && (
+                        <div style={{ background: 'var(--color-gallery-white)', borderRadius: 'var(--radius-cards)', border: '1px solid var(--color-hairline-silver)', padding: 'var(--spacing-20)', minWidth: 0 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                            <h4 style={{ color: 'var(--color-ink)', fontSize: '14px', fontWeight: '600', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <Building size={15} color="var(--color-pricing-blue)" />
+                              <span>Class Standards (1 to 12)</span>
+                            </h4>
+                            <span style={{ fontSize: '11px', color: 'var(--color-slate)' }}>12 Classes</span>
                           </div>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span style={{ color: '#ec4899', fontSize: '0.85rem', fontWeight: '700' }}>Section:</span>
-                            <select
-                              value={mod4SelectedSection}
-                              onChange={(e) => setMod4SelectedSection(e.target.value.toUpperCase())}
-                              style={{ background: 'rgba(15, 23, 42, 0.95)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '8px', padding: '0.35rem 0.6rem', color: '#ffffff', fontWeight: '700', outline: 'none', cursor: 'pointer' }}
-                            >
-                              {['A', 'B', 'C'].map(sec => (
-                                <option key={sec} value={sec}>Section {sec}</option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-
-                        <div>
-                          {mod4ViewMode === 'list' ? (
-                            <button
-                              onClick={() => setMod4ViewMode('create')}
-                              style={{ background: 'linear-gradient(135deg, #ec4899, #be185d)', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '0.5rem 1rem', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(236, 72, 153, 0.3)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-                            >
-                              <Plus size={16} />
-                              <span>Create Assignment</span>
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => setMod4ViewMode('list')}
-                              style={{ background: 'rgba(255, 255, 255, 0.08)', color: '#cbd5e1', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '0.5rem 1rem', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer' }}
-                            >
-                              Back to Assignments List
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* VIEW MODE 1: LIST EXISTING ASSIGNMENTS (HISTORY) */}
-                      {mod4ViewMode === 'list' && (
-                        <div style={{ background: 'rgba(15, 23, 42, 0.7)', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.1)', padding: '1.25rem' }}>
-                          <h4 style={{ color: '#ffffff', fontSize: '1.05rem', fontWeight: '700', margin: '0 0 1.25rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '0.75rem' }}>
-                            <BookOpen size={18} color="#ec4899" />
-                            <span>Assignment Conducted History (Class {mod4SelectedClass} - Section {mod4SelectedSection})</span>
-                          </h4>
-
-                          {mod4Loading ? (
-                            <div style={{ textAlign: 'center', padding: '3rem 0', color: '#ec4899' }}>Loading assignments history...</div>
-                          ) : mod4Assignments.length === 0 ? (
-                            <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#94a3b8' }}>
-                              <BookOpen size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-                              <p style={{ margin: 0, fontSize: '0.92rem' }}>No assignments have been conducted for Class {mod4SelectedClass} - Section {mod4SelectedSection} yet.</p>
-                              <button
-                                onClick={() => setMod4ViewMode('create')}
-                                style={{ marginTop: '1rem', background: 'rgba(236, 72, 153, 0.15)', color: '#ec4899', border: '1px solid rgba(236, 72, 153, 0.3)', borderRadius: '8px', padding: '0.45rem 1rem', fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer' }}
-                              >
-                                Create the First Assignment
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="table-wrapper" style={{ overflowX: 'auto' }}>
-                              <table className="portal-table" style={{ width: '100%' }}>
-                                <thead>
-                                  <tr>
-                                    <th style={{ padding: '0.85rem 1.1rem', textAlign: 'left', width: '160px' }}>Created Date</th>
-                                    <th style={{ padding: '0.85rem 1.1rem', textAlign: 'left', width: '160px' }}>Conduct Date</th>
-                                    <th style={{ padding: '0.85rem 1.1rem', textAlign: 'left' }}>Assignment Title</th>
-                                    <th style={{ padding: '0.85rem 1.1rem', textAlign: 'left', width: '130px' }}>Subject</th>
-                                    <th style={{ padding: '0.85rem 1.1rem', textAlign: 'center', width: '90px' }}>Class</th>
-                                    <th style={{ padding: '0.85rem 1.1rem', textAlign: 'center', width: '80px' }}>Section</th>
-                                    <th style={{ padding: '0.85rem 1.1rem', textAlign: 'center', width: '120px' }}>Questions Count</th>
-                                    <th style={{ padding: '0.85rem 1.1rem', textAlign: 'center', width: '120px' }}>Actions</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {mod4Assignments.map(asm => {
-                                    const createdStr = asm.createdAt ? new Date(asm.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
-                                    
-                                    const formatConductDate = (dt) => {
-                                      if (!dt) return '-';
-                                      try {
-                                        const d = new Date(dt);
-                                        if (isNaN(d.getTime())) return dt;
-                                        return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                                      } catch {
-                                        return dt;
-                                      }
-                                    };
-
-                                    const qCount = asm.questions ? asm.questions.length : 0;
-                                    return (
-                                      <tr key={asm.id} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                                        <td style={{ padding: '0.85rem 1.1rem', color: '#94a3b8', fontSize: '0.85rem' }}>{createdStr}</td>
-                                        <td style={{ padding: '0.85rem 1.1rem', color: '#38bdf8', fontSize: '0.85rem', fontWeight: '600' }}>{formatConductDate(asm.conductDate)}</td>
-                                        <td style={{ padding: '0.85rem 1.1rem', color: '#ffffff', fontWeight: '700', fontSize: '0.88rem' }}>{asm.assignmentTitle}</td>
-                                        <td style={{ padding: '0.85rem 1.1rem', color: '#f59e0b', fontWeight: '700', fontSize: '0.85rem' }}>{asm.subject || 'General'}</td>
-                                        <td style={{ padding: '0.85rem 1.1rem', color: '#ec4899', fontWeight: '700', fontSize: '0.88rem', textAlign: 'center' }}>C{asm.classStandard}</td>
-                                        <td style={{ padding: '0.85rem 1.1rem', color: '#cbd5e1', fontWeight: '700', fontSize: '0.88rem', textAlign: 'center' }}>{asm.sectionName}</td>
-                                        <td style={{ padding: '0.85rem 1.1rem', color: '#a78bfa', fontWeight: '800', fontSize: '0.88rem', textAlign: 'center' }}>{qCount} MCQs</td>
-                                        <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
-                                          <button
-                                            onClick={() => {
-                                              setMod4SelectedAssignment(asm);
-                                              setMod4ViewMode('view');
-                                              fetchMod4AssignmentQuestions(asm.id);
-                                            }}
-                                            style={{ background: 'rgba(236, 72, 153, 0.15)', color: '#ec4899', border: '1px solid rgba(236, 72, 153, 0.3)', padding: '0.35rem 0.75rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s' }}
-                                          >
-                                            View Details
-                                          </button>
-                                        </td>
-                                      </tr>
-                                    );
-                                  })}
-                                </tbody>
-                              </table>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* VIEW MODE 2: CREATE NEW MCQ ASSIGNMENT */}
-                      {mod4ViewMode === 'create' && (
-                        <div style={{ background: 'rgba(15, 23, 42, 0.7)', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.1)', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                          
-                          {/* Assignment Form Metadata Fields */}
-                          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1.2fr auto auto', gap: '1.25rem', alignItems: 'end', background: 'rgba(15, 23, 42, 0.5)', border: '1px solid rgba(255, 255, 255, 0.05)', padding: '1rem', borderRadius: '12px' }}>
-                            <div style={{ minWidth: 0 }}>
-                              <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.82rem', fontWeight: '700', marginBottom: '6px' }}>Assignment / Exam Title</label>
-                              <input
-                                type="text"
-                                placeholder="Enter Exam Name (e.g. Unit Test 1)..."
-                                value={mod4NewAssignmentTitle}
-                                onChange={(e) => setMod4NewAssignmentTitle(e.target.value)}
-                                style={{ background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '8px', padding: '0.5rem 0.85rem', color: '#ffffff', fontSize: '0.9rem', width: '100%', outline: 'none' }}
-                              />
-                            </div>
-                            <div style={{ minWidth: 0 }}>
-                              <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.82rem', fontWeight: '700', marginBottom: '6px' }}>Subject Name</label>
-                              <input
-                                type="text"
-                                placeholder="Enter Subject (e.g. Telugu, Physics)..."
-                                value={mod4NewAssignmentSubject}
-                                onChange={(e) => setMod4NewAssignmentSubject(e.target.value)}
-                                style={{ background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '8px', padding: '0.5rem 0.85rem', color: '#ffffff', fontSize: '0.9rem', width: '100%', outline: 'none' }}
-                              />
-                            </div>
-                            <div style={{ minWidth: 0 }}>
-                              <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.82rem', fontWeight: '700', marginBottom: '6px' }}>Conduct Date & Time</label>
-                              <input
-                                type="datetime-local"
-                                value={mod4NewAssignmentConductDate}
-                                onChange={(e) => setMod4NewAssignmentConductDate(e.target.value)}
-                                style={{ background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '8px', padding: '0.48rem 0.85rem', color: '#ffffff', fontSize: '0.9rem', width: '100%', outline: 'none', colorScheme: 'dark', cursor: 'pointer' }}
-                              />
-                            </div>
-                            <div>
-                              <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.82rem', fontWeight: '700', marginBottom: '6px' }}>Target Class</label>
-                              <div style={{ background: 'rgba(255, 255, 255, 0.06)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '8px', padding: '0.5rem 1rem', color: '#ec4899', fontWeight: '800', fontSize: '0.9rem', textAlign: 'center' }}>
-                                Class {mod4SelectedClass}
-                              </div>
-                            </div>
-                            <div>
-                              <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.82rem', fontWeight: '700', marginBottom: '6px' }}>Target Section</label>
-                              <div style={{ background: 'rgba(255, 255, 255, 0.06)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '8px', padding: '0.5rem 1rem', color: '#38bdf8', fontWeight: '800', fontSize: '0.9rem', textAlign: 'center' }}>
-                                Section {mod4SelectedSection}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Quick Jump Sidebar Index Navigation */}
-                          <div>
-                            <span style={{ display: 'block', color: '#94a3b8', fontSize: '0.78rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
-                              Quick Index Navigation (1 to 50 MCQ Questions)
-                            </span>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', background: 'rgba(15, 23, 42, 0.4)', padding: '0.6rem', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                              {mod4NewQuestions.map((q, idx) => {
-                                const isFilled = q.questionText.trim() !== '';
-                                return (
-                                  <button
-                                    key={idx}
-                                    type="button"
-                                    onClick={() => {
-                                      const element = document.getElementById(`q_card_${q.questionNumber}`);
-                                      if (element) {
-                                        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                      }
-                                    }}
-                                    style={{
-                                      width: '28px',
-                                      height: '28px',
-                                      borderRadius: '6px',
-                                      fontSize: '0.72rem',
-                                      fontWeight: '800',
-                                      border: isFilled ? '1px solid #ec4899' : '1px solid rgba(255, 255, 255, 0.12)',
-                                      background: isFilled ? 'rgba(236, 72, 153, 0.25)' : 'rgba(15, 23, 42, 0.6)',
-                                      color: isFilled ? '#ff79c6' : '#64748b',
-                                      cursor: 'pointer',
-                                      transition: 'all 0.15s ease'
-                                    }}
-                                    title={isFilled ? `Question ${q.questionNumber} (Filled)` : `Question ${q.questionNumber} (Empty)`}
-                                  >
-                                    {q.questionNumber}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-
-                          {/* 50 MCQ Questions Builder Stack */}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxHeight: '550px', overflowY: 'auto', paddingRight: '0.5rem' }}>
-                            {mod4NewQuestions.map((q, idx) => {
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => {
+                              const isSelected = selectedClass === num;
                               return (
-                                <div
-                                  key={idx}
-                                  id={`q_card_${q.questionNumber}`}
+                                <button
+                                  key={num}
+                                  onClick={() => setSelectedClass(num)}
                                   style={{
-                                    background: 'rgba(15, 23, 42, 0.8)',
-                                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                                    borderRadius: '16px',
-                                    padding: '1.25rem',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: '1rem',
-                                    position: 'relative'
+                                    background: isSelected ? 'var(--color-ink)' : 'var(--color-studio-mist)',
+                                    border: isSelected ? '1px solid var(--color-ink)' : '1px solid var(--color-control-gray)',
+                                    borderRadius: '12px',
+                                    padding: '9px 4px',
+                                    textAlign: 'center',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease'
                                   }}
                                 >
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span style={{ background: 'linear-gradient(135deg, #ec4899, #be185d)', color: '#ffffff', padding: '0.25rem 0.75rem', borderRadius: '20px', fontSize: '0.78rem', fontWeight: '800' }}>
-                                      QUESTION {q.questionNumber} OF 50
-                                    </span>
-                                    {q.questionText.trim() !== '' && (
-                                      <span style={{ color: '#4ade80', fontSize: '0.75rem', fontWeight: '700' }}>✓ Active</span>
-                                    )}
-                                  </div>
-
-                                  <div>
-                                    <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.8rem', fontWeight: '700', marginBottom: '4px' }}>Question Prompt</label>
-                                    <input
-                                      type="text"
-                                      placeholder={`Type MCQ question prompt #${q.questionNumber} here...`}
-                                      value={q.questionText}
-                                      onChange={(e) => {
-                                        const newVal = e.target.value;
-                                        setMod4NewQuestions(prev => prev.map(item => item.questionNumber === q.questionNumber ? { ...item, questionText: newVal } : item));
-                                      }}
-                                      style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.12)', borderRadius: '8px', padding: '0.45rem 0.75rem', color: '#ffffff', fontSize: '0.85rem', width: '100%', outline: 'none' }}
-                                    />
-                                  </div>
-
-                                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                                    <div>
-                                      <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.78rem', fontWeight: '700', marginBottom: '4px' }}>Option A</label>
-                                      <input
-                                        type="text"
-                                        placeholder="Option A"
-                                        value={q.optionA}
-                                        onChange={(e) => {
-                                          const newVal = e.target.value;
-                                          setMod4NewQuestions(prev => prev.map(item => item.questionNumber === q.questionNumber ? { ...item, optionA: newVal } : item));
-                                        }}
-                                        style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.12)', borderRadius: '8px', padding: '0.4rem 0.75rem', color: '#ffffff', fontSize: '0.82rem', width: '100%', outline: 'none' }}
-                                      />
-                                    </div>
-                                    <div>
-                                      <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.78rem', fontWeight: '700', marginBottom: '4px' }}>Option B</label>
-                                      <input
-                                        type="text"
-                                        placeholder="Option B"
-                                        value={q.optionB}
-                                        onChange={(e) => {
-                                          const newVal = e.target.value;
-                                          setMod4NewQuestions(prev => prev.map(item => item.questionNumber === q.questionNumber ? { ...item, optionB: newVal } : item));
-                                        }}
-                                        style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.12)', borderRadius: '8px', padding: '0.4rem 0.75rem', color: '#ffffff', fontSize: '0.82rem', width: '100%', outline: 'none' }}
-                                      />
-                                    </div>
-                                    <div>
-                                      <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.78rem', fontWeight: '700', marginBottom: '4px' }}>Option C</label>
-                                      <input
-                                        type="text"
-                                        placeholder="Option C"
-                                        value={q.optionC}
-                                        onChange={(e) => {
-                                          const newVal = e.target.value;
-                                          setMod4NewQuestions(prev => prev.map(item => item.questionNumber === q.questionNumber ? { ...item, optionC: newVal } : item));
-                                        }}
-                                        style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.12)', borderRadius: '8px', padding: '0.4rem 0.75rem', color: '#ffffff', fontSize: '0.82rem', width: '100%', outline: 'none' }}
-                                      />
-                                    </div>
-                                    <div>
-                                      <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.78rem', fontWeight: '700', marginBottom: '4px' }}>Option D</label>
-                                      <input
-                                        type="text"
-                                        placeholder="Option D"
-                                        value={q.optionD}
-                                        onChange={(e) => {
-                                          const newVal = e.target.value;
-                                          setMod4NewQuestions(prev => prev.map(item => item.questionNumber === q.questionNumber ? { ...item, optionD: newVal } : item));
-                                        }}
-                                        style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.12)', borderRadius: '8px', padding: '0.4rem 0.75rem', color: '#ffffff', fontSize: '0.82rem', width: '100%', outline: 'none' }}
-                                      />
-                                    </div>
-                                  </div>
-
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
-                                    <span style={{ color: '#cbd5e1', fontSize: '0.8rem', fontWeight: '700' }}>Correct Answer Option:</span>
-                                    <select
-                                      value={q.correctOption}
-                                      onChange={(e) => {
-                                        const newVal = e.target.value;
-                                        setMod4NewQuestions(prev => prev.map(item => item.questionNumber === q.questionNumber ? { ...item, correctOption: newVal } : item));
-                                      }}
-                                      style={{ background: 'rgba(15, 23, 42, 0.95)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '6px', padding: '0.25rem 0.5rem', color: '#4ade80', fontWeight: '800', outline: 'none', cursor: 'pointer' }}
-                                    >
-                                      <option value="A">Option A</option>
-                                      <option value="B">Option B</option>
-                                      <option value="C">Option C</option>
-                                      <option value="D">Option D</option>
-                                    </select>
-                                  </div>
-                                </div>
+                                  <div style={{ fontSize: '10px', color: isSelected ? 'var(--color-steel)' : 'var(--color-slate)', fontWeight: '600', textTransform: 'uppercase' }}>Class</div>
+                                  <div style={{ fontSize: '15px', fontWeight: '600', color: isSelected ? 'var(--color-gallery-white)' : 'var(--color-ink)', marginTop: '2px' }}>{num}</div>
+                                </button>
                               );
                             })}
                           </div>
+                        </div>
+                      )}
+                    </div>
 
-                          {/* Submit Actions Bar */}
-                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '1.25rem' }}>
-                            <button
-                              type="button"
-                              onClick={() => setMod4ViewMode('list')}
-                              style={{ background: 'rgba(255, 255, 255, 0.08)', color: '#cbd5e1', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', padding: '0.65rem 1.25rem', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer' }}
-                            >
-                              Cancel
+                    {/* Class Timetable Grid & Date Navigation */}
+                    {selectedClass && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-16)', marginTop: '4px', width: '100%' }}>
+                        
+                        {/* Timetable Header Card */}
+                        <div
+                          style={{
+                            background: 'var(--color-gallery-white)',
+                            border: '1px solid var(--color-hairline-silver)',
+                            borderRadius: 'var(--radius-cards)',
+                            padding: 'var(--spacing-16) var(--spacing-20)',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            flexWrap: 'wrap',
+                            gap: 'var(--spacing-12)'
+                          }}
+                        >
+                          <div>
+                            <h4 style={{ color: 'var(--color-ink)', fontSize: '17px', fontWeight: '600', margin: 0 }}>
+                              Class {selectedClass} Timetable Schedule
+                            </h4>
+                            <p style={{ color: 'var(--color-slate)', fontSize: '12px', margin: '3px 0 0 0' }}>
+                              Date: <strong style={{ color: 'var(--color-ink)' }}>{getFormattedDateWithDay(selectedDate)}</strong>
+                            </p>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-studio-mist)', padding: '4px 10px', borderRadius: 'var(--radius-inputs)', border: '1px solid var(--color-steel)' }}>
+                              <input
+                                type="date"
+                                value={selectedDate}
+                                onChange={(e) => setSelectedDate(e.target.value)}
+                                style={{ background: 'transparent', color: 'var(--color-ink)', border: 'none', fontSize: '12px', fontWeight: '500', outline: 'none' }}
+                              />
+                            </div>
+                            
+                            <button onClick={handleNavigateYesterday} className="btn-apple-outline" style={{ padding: '5px 12px', fontSize: '12px' }}>
+                              ‹ Yesterday
                             </button>
-                            <button
-                              type="button"
-                              onClick={saveMod4Assignment}
-                              style={{ background: 'linear-gradient(135deg, #ec4899, #be185d)', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '0.65rem 1.5rem', fontSize: '0.85rem', fontWeight: '800', cursor: 'pointer', boxShadow: '0 4px 14px rgba(236, 72, 153, 0.4)' }}
-                            >
-                              Submit & Conduct Assignment
+                            <button onClick={handleNavigateToday} className="btn-apple-outline" style={{ padding: '5px 12px', fontSize: '12px', borderColor: 'var(--color-pricing-blue)', color: 'var(--color-pricing-blue)' }}>
+                              Today
+                            </button>
+                            <button onClick={handleNavigateTomorrow} className="btn-apple-outline" style={{ padding: '5px 12px', fontSize: '12px' }}>
+                              Tomorrow ›
                             </button>
                           </div>
                         </div>
-                      )}
 
-                      {/* VIEW MODE 3: DETAILED QUESTIONS INSPECTION FOR SELECTED ASSIGNMENT */}
-                      {mod4ViewMode === 'view' && mod4SelectedAssignment && (
-                        <div style={{ background: 'rgba(15, 23, 42, 0.7)', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.1)', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '0.75rem' }}>
-                            <div>
-                              <h4 style={{ color: '#ffffff', fontSize: '1.15rem', fontWeight: '800', margin: 0 }}>
-                                {mod4SelectedAssignment.assignmentTitle}
-                              </h4>
-                              <p style={{ color: '#ec4899', fontSize: '0.82rem', margin: '4px 0 0 0', fontWeight: '700' }}>
-                                Class {mod4SelectedAssignment.classStandard} Standard - Section {mod4SelectedAssignment.sectionName} | Subject: {mod4SelectedAssignment.subject || 'General'}
-                              </p>
-                              <p style={{ color: '#cbd5e1', fontSize: '0.78rem', margin: '4px 0 0 0', fontWeight: '600', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                                <span>📅 <strong style={{ color: '#94a3b8' }}>Created:</strong> {mod4SelectedAssignment.createdAt ? new Date(mod4SelectedAssignment.createdAt).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</span>
-                                <span>⏰ <strong style={{ color: '#38bdf8' }}>Conduct:</strong> {mod4SelectedAssignment.conductDate ? new Date(mod4SelectedAssignment.conductDate).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</span>
-                              </p>
-                            </div>
-                            <button
-                              onClick={() => {
-                                setMod4SelectedAssignment(null);
-                                setMod4SelectedAssignmentQuestions([]);
-                                setMod4ViewMode('list');
-                              }}
-                              style={{ background: 'rgba(255, 255, 255, 0.06)', border: '1px solid rgba(255, 255, 255, 0.12)', borderRadius: '8px', padding: '0.4rem 0.85rem', color: '#cbd5e1', fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer' }}
-                            >
-                              Back to List
-                            </button>
-                          </div>
-
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '520px', overflowY: 'auto', paddingRight: '0.5rem' }}>
-                            {mod4SelectedAssignmentQuestions.length === 0 ? (
-                              <div style={{ textAlign: 'center', padding: '2rem 0', color: '#94a3b8' }}>Loading questions details...</div>
-                            ) : (
-                              mod4SelectedAssignmentQuestions.map((q, idx) => (
-                                <div key={idx} style={{ background: 'rgba(15, 23, 42, 0.5)', border: '1px solid rgba(255, 255, 255, 0.06)', padding: '1rem', borderRadius: '12px' }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                    <span style={{ color: '#ec4899', fontSize: '0.75rem', fontWeight: '800' }}>QUESTION {q.questionNumber}</span>
-                                    <span style={{ background: 'rgba(74, 222, 128, 0.15)', color: '#4ade80', border: '1px solid rgba(74, 222, 128, 0.3)', padding: '0.15rem 0.45rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: '700' }}>
-                                      Correct Option: {q.correctOption}
-                                    </span>
-                                  </div>
-                                  <p style={{ color: '#ffffff', fontSize: '0.88rem', margin: '0 0 0.75rem 0', fontWeight: '600' }}>
-                                    {q.questionText}
-                                  </p>
-                                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', paddingLeft: '0.5rem' }}>
-                                    <div style={{ color: q.correctOption === 'A' ? '#4ade80' : '#94a3b8', fontSize: '0.8rem' }}>
-                                      <strong style={{ color: q.correctOption === 'A' ? '#4ade80' : '#cbd5e1' }}>A)</strong> {q.optionA}
-                                    </div>
-                                    <div style={{ color: q.correctOption === 'B' ? '#4ade80' : '#94a3b8', fontSize: '0.8rem' }}>
-                                      <strong style={{ color: q.correctOption === 'B' ? '#4ade80' : '#cbd5e1' }}>B)</strong> {q.optionB}
-                                    </div>
-                                    <div style={{ color: q.correctOption === 'C' ? '#4ade80' : '#94a3b8', fontSize: '0.8rem' }}>
-                                      <strong style={{ color: q.correctOption === 'C' ? '#4ade80' : '#cbd5e1' }}>C)</strong> {q.optionC}
-                                    </div>
-                                    <div style={{ color: q.correctOption === 'D' ? '#4ade80' : '#94a3b8', fontSize: '0.8rem' }}>
-                                      <strong style={{ color: q.correctOption === 'D' ? '#4ade80' : '#cbd5e1' }}>D)</strong> {q.optionD}
-                                    </div>
-                                  </div>
+                        {/* 3 Sections Timetable Cards (A, B, C) */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-16)', width: '100%' }}>
+                          {[1, 2, 3].map((sectionNum) => {
+                            const secLetter = sectionNum === 1 ? 'A' : sectionNum === 2 ? 'B' : 'C';
+                            return (
+                              <div
+                                key={sectionNum}
+                                style={{
+                                  background: 'var(--color-gallery-white)',
+                                  border: '1px solid var(--color-hairline-silver)',
+                                  borderRadius: 'var(--radius-cards)',
+                                  overflow: 'hidden',
+                                  width: '100%'
+                                }}
+                              >
+                                <div style={{ padding: '12px 18px', background: 'var(--color-studio-mist)', borderBottom: '1px solid var(--color-control-gray)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <h5 style={{ color: 'var(--color-ink)', margin: 0, fontSize: '14px', fontWeight: '600' }}>
+                                    Class {selectedClass} — Section {secLetter}
+                                  </h5>
+                                  <span style={{ fontSize: '11px', color: 'var(--color-slate)' }}>8 Daily Slots</span>
                                 </div>
+
+                                <div style={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                                  <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', color: 'var(--color-ink)', fontSize: '11px' }}>
+                                    <thead>
+                                      <tr style={{ background: 'var(--color-paper-frost)', borderBottom: '1px solid var(--color-hairline-silver)', textTransform: 'uppercase', fontSize: '9.5px', color: 'var(--color-slate)', letterSpacing: '0.02em' }}>
+                                        {PERIOD_TIMINGS.map((timing, pIdx) => (
+                                          <th key={pIdx} style={{ padding: '7px 2px', textAlign: 'center', width: '12.5%', whiteSpace: 'nowrap' }}>
+                                            {timing}
+                                          </th>
+                                        ))}
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      <tr>
+                                        {PERIOD_TIMINGS.map((timing, pIdx) => {
+                                          const cellKey = selectedClass + '_' + sectionNum + '_' + pIdx;
+                                          const cellData = scheduleGrid[cellKey];
+
+                                          if (pIdx === 3) {
+                                            return (
+                                              <td key={pIdx} style={{ padding: '8px 2px', textAlign: 'center', background: 'var(--color-studio-mist)', borderRight: '1px solid var(--color-control-gray)', color: 'var(--color-slate)', fontWeight: '500', fontSize: '11px', whiteSpace: 'nowrap' }}>
+                                                Lunch Break
+                                              </td>
+                                            );
+                                          }
+
+                                          return (
+                                            <td
+                                              key={pIdx}
+                                              onDragOver={(e) => e.preventDefault()}
+                                              onDrop={(e) => {
+                                                const roomTransfer = e.dataTransfer.getData('application/room-transfer');
+                                                if (roomTransfer) {
+                                                  handleDropRoom(sectionNum, pIdx, JSON.parse(roomTransfer));
+                                                  return;
+                                                }
+                                                const teacherData = e.dataTransfer.getData('application/json');
+                                                if (teacherData) {
+                                                  handleDrop(sectionNum, pIdx, JSON.parse(teacherData));
+                                                }
+                                              }}
+                                              onClick={() => {
+                                                if (activeTeacherClick) {
+                                                  assignTeacherToCell(sectionNum, pIdx, activeTeacherClick);
+                                                } else if (activeRoomClick) {
+                                                  assignRoomToCell(sectionNum, pIdx, activeRoomClick);
+                                                }
+                                              }}
+                                              style={{
+                                                padding: '8px 2px',
+                                                textAlign: 'center',
+                                                borderRight: '1px solid var(--color-control-gray)',
+                                                background: cellData ? 'var(--color-gallery-white)' : 'var(--color-studio-mist)',
+                                                cursor: (activeTeacherClick || activeRoomClick) ? 'pointer' : 'default',
+                                                verticalAlign: 'middle',
+                                                overflow: 'hidden'
+                                              }}
+                                            >
+                                              {cellData ? (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'center' }}>
+                                                  <div style={{ fontWeight: '600', color: 'var(--color-ink)', fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+                                                    {cellData.teacher}
+                                                  </div>
+                                                  <div style={{ color: 'var(--color-pricing-blue)', fontSize: '10.5px', fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+                                                    {cellData.sub}
+                                                  </div>
+                                                  <div
+                                                    onClick={(e) => { e.stopPropagation(); handleEditRoomNumber(sectionNum, pIdx); }}
+                                                    style={{ fontSize: '9.5px', color: 'var(--color-slate)', border: '1px solid var(--color-hairline-silver)', padding: '1px 4px', borderRadius: '4px', cursor: 'pointer' }}
+                                                    title="Click to edit room"
+                                                  >
+                                                    {cellData.room_no || 'Room'}
+                                                  </div>
+                                                  <button
+                                                    onClick={(e) => { e.stopPropagation(); clearPeriodUnit(sectionNum, pIdx); }}
+                                                    style={{ background: 'transparent', border: 'none', color: 'var(--color-steel)', cursor: 'pointer', fontSize: '9.5px', marginTop: '1px' }}
+                                                    title="Clear Slot"
+                                                  >
+                                                    Clear
+                                                  </button>
+                                                </div>
+                                              ) : (
+                                                <div style={{ color: 'var(--color-steel)', fontSize: '11px', padding: '6px 0', fontStyle: 'italic', letterSpacing: '-0.2px' }}>
+                                                  Available
+                                                </div>
+                                              )}
+                                            </td>
+                                          );
+                                        })}
+                                      </tr>
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : mod.id === 'module2' ? (
+                  /* MODULE 2: STUDENT DIRECTORY */
+                  <div style={{ background: 'var(--color-gallery-white)', borderRadius: 'var(--radius-cards)', border: '1px solid var(--color-hairline-silver)', padding: 'var(--spacing-20)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                        <input
+                          type="text"
+                          placeholder="Search students by name, ID or parent..."
+                          value={studentSearchQuery}
+                          onChange={(e) => setStudentSearchQuery(e.target.value)}
+                          className="search-input"
+                          style={{ width: '280px', boxSizing: 'border-box' }}
+                        />
+
+                        <select
+                          value={studentStatusFilter}
+                          onChange={(e) => setStudentStatusFilter(e.target.value)}
+                          className="search-input"
+                          style={{ width: 'auto', cursor: 'pointer' }}
+                        >
+                          <option value="ALL">All Statuses</option>
+                          <option value="ACCEPTED">Accepted</option>
+                          <option value="REJECTED">Rejected</option>
+                          <option value="PENDING">Pending</option>
+                        </select>
+                      </div>
+
+                      <span style={{ fontSize: '13px', color: 'var(--color-slate)' }}>
+                        Total: <strong style={{ color: 'var(--color-ink)' }}>{studentsList.length}</strong>
+                      </span>
+                    </div>
+
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--color-ink)', fontSize: '13px' }}>
+                        <thead>
+                          <tr style={{ background: 'var(--color-paper-frost)', borderBottom: '1px solid var(--color-hairline-silver)', textTransform: 'uppercase', fontSize: '11px', color: 'var(--color-slate)', letterSpacing: '0.04em' }}>
+                            <th style={{ padding: '12px 14px', textAlign: 'left' }}>Student ID</th>
+                            <th style={{ padding: '12px 14px', textAlign: 'left' }}>First Name</th>
+                            <th style={{ padding: '12px 14px', textAlign: 'left' }}>Last Name</th>
+                            <th style={{ padding: '12px 14px', textAlign: 'left' }}>Username</th>
+                            <th style={{ padding: '12px 14px', textAlign: 'left' }}>Parent Name</th>
+                            <th style={{ padding: '12px 14px', textAlign: 'left' }}>Email</th>
+                            <th style={{ padding: '12px 14px', textAlign: 'center' }}>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {studentsLoading ? (
+                            <tr>
+                              <td colSpan="7" style={{ textAlign: 'center', padding: '32px', color: 'var(--color-slate)' }}>
+                                Loading students data...
+                              </td>
+                            </tr>
+                          ) : (
+                            studentsList
+                              .filter(item => {
+                                const q = studentSearchQuery.toLowerCase();
+                                const stuId = (item.admissionId || ('ADM-' + item.id)).toLowerCase();
+                                const fName = (item.firstName || '').toLowerCase();
+                                const lName = (item.lastName || '').toLowerCase();
+                                const matchesQuery = stuId.includes(q) || fName.includes(q) || lName.includes(q);
+                                const matchesStatus = studentStatusFilter === 'ALL' || item.status === studentStatusFilter;
+                                return matchesQuery && matchesStatus;
+                              })
+                              .map((stu, idx) => (
+                                <tr key={stu.id} style={{ borderBottom: '1px solid var(--color-control-gray)', background: idx % 2 === 0 ? 'var(--color-gallery-white)' : 'var(--color-studio-mist)' }}>
+                                  <td style={{ padding: '12px 14px', fontWeight: '600', color: 'var(--color-pricing-blue)' }}>
+                                    {stu.admissionId || ('ADM-' + stu.id)}
+                                  </td>
+                                  <td style={{ padding: '12px 14px', fontWeight: '500', color: 'var(--color-ink)' }}>
+                                    {stu.firstName || '—'}
+                                  </td>
+                                  <td style={{ padding: '12px 14px', fontWeight: '500', color: 'var(--color-ink)' }}>
+                                    {stu.lastName || '—'}
+                                  </td>
+                                  <td style={{ padding: '12px 14px', color: 'var(--color-slate)' }}>
+                                    @{stu.username || stu.firstName?.toLowerCase() || 'student'}
+                                  </td>
+                                  <td style={{ padding: '12px 14px', color: 'var(--color-ink)' }}>
+                                    {stu.parentName || '—'}
+                                  </td>
+                                  <td style={{ padding: '12px 14px', color: 'var(--color-slate)' }}>
+                                    {stu.parentEmail || stu.email || '—'}
+                                  </td>
+                                  <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                                    <span style={{
+                                      fontSize: '11px',
+                                      fontWeight: '600',
+                                      padding: '3px 10px',
+                                      borderRadius: 'var(--radius-buttons)',
+                                      background: 'var(--color-studio-mist)',
+                                      color: stu.status === 'ACCEPTED' ? 'var(--color-pricing-blue)' : stu.status === 'REJECTED' ? 'var(--color-launch-orange)' : 'var(--color-slate)',
+                                      border: '1px solid var(--color-hairline-silver)'
+                                    }}>
+                                      {stu.status || 'PENDING'}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : mod.id === 'module3' ? (
+                  /* MODULE 3: STUDENT DETAILS & ATTENDANCE */
+                  <div style={{ background: 'var(--color-gallery-white)', borderRadius: 'var(--radius-cards)', border: '1px solid var(--color-hairline-silver)', padding: 'var(--spacing-24)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-20)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-studio-mist)', padding: '4px 10px', borderRadius: 'var(--radius-inputs)', border: '1px solid var(--color-steel)' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--color-slate)', fontWeight: '600' }}>Class:</span>
+                          <select
+                            value={mod3SelectedClass}
+                            onChange={(e) => setMod3SelectedClass(parseInt(e.target.value))}
+                            style={{ background: 'transparent', color: 'var(--color-ink)', border: 'none', fontSize: '12px', fontWeight: '500', outline: 'none', cursor: 'pointer' }}
+                          >
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(num => (
+                              <option key={num} value={num}>Class {num}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-studio-mist)', padding: '4px 10px', borderRadius: 'var(--radius-inputs)', border: '1px solid var(--color-steel)' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--color-slate)', fontWeight: '600' }}>Section:</span>
+                          <select
+                            value={mod3SelectedSection}
+                            onChange={(e) => setMod3SelectedSection(e.target.value)}
+                            style={{ background: 'transparent', color: 'var(--color-ink)', border: 'none', fontSize: '12px', fontWeight: '500', outline: 'none', cursor: 'pointer' }}
+                          >
+                            {['A', 'B', 'C'].map(sec => (
+                              <option key={sec} value={sec}>Section {sec}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-studio-mist)', padding: '4px 10px', borderRadius: 'var(--radius-inputs)', border: '1px solid var(--color-steel)' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--color-slate)', fontWeight: '600' }}>Month:</span>
+                          <select
+                            value={mod3SelectedMonth}
+                            onChange={(e) => setMod3SelectedMonth(parseInt(e.target.value))}
+                            style={{ background: 'transparent', color: 'var(--color-ink)', border: 'none', fontSize: '12px', fontWeight: '500', outline: 'none', cursor: 'pointer' }}
+                          >
+                            {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, idx) => (
+                              <option key={idx + 1} value={idx + 1}>{m}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <input
+                        type="text"
+                        placeholder="Search student..."
+                        value={mod3SearchQuery}
+                        onChange={(e) => setMod3SearchQuery(e.target.value)}
+                        className="search-input"
+                        style={{ width: '220px', boxSizing: 'border-box' }}
+                      />
+                    </div>
+
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--color-ink)', fontSize: '13px' }}>
+                        <thead>
+                          <tr style={{ background: 'var(--color-paper-frost)', borderBottom: '1px solid var(--color-hairline-silver)', textTransform: 'uppercase', fontSize: '11px', color: 'var(--color-slate)', letterSpacing: '0.04em' }}>
+                            <th style={{ padding: '12px 14px', textAlign: 'left' }}>Student ID</th>
+                            <th style={{ padding: '12px 14px', textAlign: 'left' }}>Student Name</th>
+                            <th style={{ padding: '12px 14px', textAlign: 'left' }}>Parent Name</th>
+                            <th style={{ padding: '12px 14px', textAlign: 'center' }}>Present Days</th>
+                            <th style={{ padding: '12px 14px', textAlign: 'center' }}>Absent Days</th>
+                            <th style={{ padding: '12px 14px', textAlign: 'center' }}>Attendance %</th>
+                            <th style={{ padding: '12px 14px', textAlign: 'center' }}>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {mod3Loading ? (
+                            <tr>
+                              <td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: 'var(--color-slate)' }}>
+                                Loading student records...
+                              </td>
+                            </tr>
+                          ) : (
+                            mod3Students
+                              .filter(s =>
+                                (s.firstName || '').toLowerCase().includes(mod3SearchQuery.toLowerCase()) ||
+                                (s.lastName || '').toLowerCase().includes(mod3SearchQuery.toLowerCase()) ||
+                                (s.studentId || '').toLowerCase().includes(mod3SearchQuery.toLowerCase())
+                              )
+                              .map((stu, idx) => {
+                                const studentRecs = mod3AttendanceRecords.filter(r => r.studentId === stu.studentId);
+                                const presentCount = studentRecs.filter(r => r.status === 'PRESENT').length;
+                                const absentCount = studentRecs.filter(r => r.status === 'ABSENT').length;
+                                const totalDays = studentRecs.length;
+                                const percentage = totalDays > 0 ? Math.round((presentCount / totalDays) * 100) + '%' : '0%';
+
+                                return (
+                                  <tr key={stu.id || idx} style={{ borderBottom: '1px solid var(--color-control-gray)', background: idx % 2 === 0 ? 'var(--color-gallery-white)' : 'var(--color-studio-mist)' }}>
+                                    <td style={{ padding: '12px 14px', fontWeight: '600', color: 'var(--color-pricing-blue)' }}>
+                                      {stu.studentId}
+                                    </td>
+                                    <td style={{ padding: '12px 14px', fontWeight: '500', color: 'var(--color-ink)' }}>
+                                      {stu.firstName} {stu.lastName}
+                                    </td>
+                                    <td style={{ padding: '12px 14px', color: 'var(--color-slate)' }}>
+                                      {stu.parentName}
+                                    </td>
+                                    <td style={{ padding: '12px 14px', textAlign: 'center', color: 'var(--color-pricing-blue)', fontWeight: '600' }}>
+                                      {presentCount}
+                                    </td>
+                                    <td style={{ padding: '12px 14px', textAlign: 'center', color: 'var(--color-launch-orange)', fontWeight: '600' }}>
+                                      {absentCount}
+                                    </td>
+                                    <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                                      <span style={{ background: 'var(--color-studio-mist)', color: 'var(--color-ink)', border: '1px solid var(--color-hairline-silver)', padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: '600' }}>
+                                        {percentage}
+                                      </span>
+                                    </td>
+                                    <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                                      <button
+                                        onClick={() => {
+                                          setSelectedStudentDetail(stu);
+                                          setDetailModalMonth(mod3SelectedMonth);
+                                          setDetailModalYear(mod3SelectedYear);
+                                        }}
+                                        className="btn-apple-outline"
+                                        style={{ padding: '4px 12px', fontSize: '12px' }}
+                                      >
+                                        View Log
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : mod.id === 'module4' ? (
+                  /* MODULE 4: EXAMINATIONS */
+                  <div style={{ background: 'var(--color-gallery-white)', borderRadius: 'var(--radius-cards)', border: '1px solid var(--color-hairline-silver)', padding: 'var(--spacing-24)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-20)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-studio-mist)', padding: '4px 10px', borderRadius: 'var(--radius-inputs)', border: '1px solid var(--color-steel)' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--color-slate)', fontWeight: '600' }}>Class:</span>
+                          <select
+                            value={mod4SelectedClass}
+                            onChange={(e) => setMod4SelectedClass(parseInt(e.target.value))}
+                            style={{ background: 'transparent', color: 'var(--color-ink)', border: 'none', fontSize: '12px', fontWeight: '500', outline: 'none', cursor: 'pointer' }}
+                          >
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(c => (
+                              <option key={c} value={c}>{c} Standard</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-studio-mist)', padding: '4px 10px', borderRadius: 'var(--radius-inputs)', border: '1px solid var(--color-steel)' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--color-slate)', fontWeight: '600' }}>Section:</span>
+                          <select
+                            value={mod4SelectedSection}
+                            onChange={(e) => setMod4SelectedSection(e.target.value.toUpperCase())}
+                            style={{ background: 'transparent', color: 'var(--color-ink)', border: 'none', fontSize: '12px', fontWeight: '500', outline: 'none', cursor: 'pointer' }}
+                          >
+                            {['A', 'B', 'C'].map(sec => (
+                              <option key={sec} value={sec}>Section {sec}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        {mod4ViewMode === 'list' ? (
+                          <button
+                            onClick={() => setMod4ViewMode('create')}
+                            className="btn-apple-primary"
+                            style={{ padding: '6px 16px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                          >
+                            <Plus size={14} /> Create Assignment
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setMod4ViewMode('list')}
+                            className="btn-apple-outline"
+                            style={{ padding: '6px 16px', fontSize: '12px' }}
+                          >
+                            Back to List
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Mod 4 List View */}
+                    {mod4ViewMode === 'list' && (
+                      <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--color-ink)', fontSize: '13px' }}>
+                          <thead>
+                            <tr style={{ background: 'var(--color-paper-frost)', borderBottom: '1px solid var(--color-hairline-silver)', textTransform: 'uppercase', fontSize: '11px', color: 'var(--color-slate)', letterSpacing: '0.04em' }}>
+                              <th style={{ padding: '12px 14px', textAlign: 'left' }}>Title</th>
+                              <th style={{ padding: '12px 14px', textAlign: 'left' }}>Subject</th>
+                              <th style={{ padding: '12px 14px', textAlign: 'center' }}>Class & Sec</th>
+                              <th style={{ padding: '12px 14px', textAlign: 'center' }}>Questions</th>
+                              <th style={{ padding: '12px 14px', textAlign: 'center' }}>Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {mod4Loading ? (
+                              <tr>
+                                <td colSpan="5" style={{ padding: '32px', textAlign: 'center', color: 'var(--color-slate)' }}>Loading assignments...</td>
+                              </tr>
+                            ) : mod4Assignments.length === 0 ? (
+                              <tr>
+                                <td colSpan="5" style={{ padding: '32px', textAlign: 'center', color: 'var(--color-slate)' }}>No assignments recorded for this class.</td>
+                              </tr>
+                            ) : (
+                              mod4Assignments.map((asm, idx) => (
+                                <tr key={asm.id || idx} style={{ borderBottom: '1px solid var(--color-control-gray)', background: idx % 2 === 0 ? 'var(--color-gallery-white)' : 'var(--color-studio-mist)' }}>
+                                  <td style={{ padding: '12px 14px', fontWeight: '600', color: 'var(--color-ink)' }}>{asm.assignmentTitle}</td>
+                                  <td style={{ padding: '12px 14px', color: 'var(--color-pricing-blue)', fontWeight: '500' }}>{asm.subject}</td>
+                                  <td style={{ padding: '12px 14px', textAlign: 'center', color: 'var(--color-slate)' }}>C{asm.classStandard} - {asm.sectionName}</td>
+                                  <td style={{ padding: '12px 14px', textAlign: 'center' }}>{asm.questions?.length || 0} MCQs</td>
+                                  <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                                    <button
+                                      onClick={() => {
+                                        setMod4SelectedAssignment(asm);
+                                        setMod4ViewMode('view');
+                                        fetchMod4AssignmentQuestions(asm.id);
+                                      }}
+                                      className="btn-apple-outline"
+                                      style={{ padding: '4px 12px', fontSize: '12px' }}
+                                    >
+                                      View Details
+                                    </button>
+                                  </td>
+                                </tr>
                               ))
                             )}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    {/* Mod 4 Create Mode */}
+                    {mod4ViewMode === 'create' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-16)' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                          <div>
+                            <label style={{ display: 'block', color: 'var(--color-slate)', fontSize: '12px', marginBottom: '4px' }}>Assignment Title</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. Unit Test 1"
+                              value={mod4NewAssignmentTitle}
+                              onChange={(e) => setMod4NewAssignmentTitle(e.target.value)}
+                              className="search-input"
+                              style={{ width: '100%', boxSizing: 'border-box' }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', color: 'var(--color-slate)', fontSize: '12px', marginBottom: '4px' }}>Subject Name</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. Mathematics"
+                              value={mod4NewAssignmentSubject}
+                              onChange={(e) => setMod4NewAssignmentSubject(e.target.value)}
+                              className="search-input"
+                              style={{ width: '100%', boxSizing: 'border-box' }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', color: 'var(--color-slate)', fontSize: '12px', marginBottom: '4px' }}>Conduct Date & Time</label>
+                            <input
+                              type="datetime-local"
+                              value={mod4NewAssignmentConductDate}
+                              onChange={(e) => setMod4NewAssignmentConductDate(e.target.value)}
+                              className="search-input"
+                              style={{ width: '100%', boxSizing: 'border-box' }}
+                            />
                           </div>
                         </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div
-                      style={{
-                        background: 'rgba(15, 23, 42, 0.6)',
-                        border: '1px dashed rgba(255, 255, 255, 0.15)',
-                        borderRadius: '16px',
-                        padding: '4rem 2rem',
-                        textAlign: 'center',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '1rem',
-                        minHeight: '320px'
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: '56px',
-                          height: '56px',
-                          borderRadius: '50%',
-                          background: mod.color + '15',
-                          border: '1px solid ' + mod.color + '30',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}
-                      >
-                        {mod.icon}
+
+                        {/* Questions list */}
+                        <div style={{ maxHeight: '420px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingRight: '6px' }}>
+                          {mod4NewQuestions.slice(0, 10).map((q, idx) => (
+                            <div key={idx} style={{ background: 'var(--color-studio-mist)', padding: '14px', borderRadius: '12px', border: '1px solid var(--color-hairline-silver)' }}>
+                              <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--color-ink)', marginBottom: '8px' }}>
+                                Question {q.questionNumber}
+                              </div>
+                              <input
+                                type="text"
+                                placeholder={`Enter question text #${q.questionNumber}`}
+                                value={q.questionText}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setMod4NewQuestions(prev => prev.map(item => item.questionNumber === q.questionNumber ? { ...item, questionText: val } : item));
+                                }}
+                                className="search-input"
+                                style={{ width: '100%', marginBottom: '8px', boxSizing: 'border-box' }}
+                              />
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                                <input
+                                  type="text"
+                                  placeholder="Option A"
+                                  value={q.optionA}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setMod4NewQuestions(prev => prev.map(item => item.questionNumber === q.questionNumber ? { ...item, optionA: val } : item));
+                                  }}
+                                  className="search-input"
+                                  style={{ width: '100%', boxSizing: 'border-box' }}
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="Option B"
+                                  value={q.optionB}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setMod4NewQuestions(prev => prev.map(item => item.questionNumber === q.questionNumber ? { ...item, optionB: val } : item));
+                                  }}
+                                  className="search-input"
+                                  style={{ width: '100%', boxSizing: 'border-box' }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                          <button onClick={() => setMod4ViewMode('list')} className="btn-apple-outline" style={{ padding: '8px 18px', fontSize: '13px' }}>
+                            Cancel
+                          </button>
+                          <button onClick={saveMod4Assignment} className="btn-apple-primary" style={{ padding: '8px 18px', fontSize: '13px' }}>
+                            Save Assignment
+                          </button>
+                        </div>
                       </div>
-                      <div>
-                        <h4 style={{ color: '#ffffff', fontSize: '1.1rem', fontWeight: '700', margin: 0 }}>
-                          {mod.subtitle} Workspace
-                        </h4>
-                        <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '0.4rem', maxWidth: '420px', lineHeight: '1.5' }}>
-                          This module workspace is currently empty. Module features and interactive components will be built here later.
-                        </p>
-                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* MODULE 5 WORKSPACE PLACEHOLDER */
+                  <div style={{ background: 'var(--color-gallery-white)', borderRadius: 'var(--radius-cards)', border: '1px solid var(--color-hairline-silver)', padding: 'var(--spacing-28)', textAlign: 'center' }}>
+                    <div style={{ background: 'var(--color-studio-mist)', border: '1px dashed var(--color-hairline-silver)', borderRadius: '20px', padding: '48px 20px' }}>
+                      <h4 style={{ color: 'var(--color-ink)', fontSize: '16px', fontWeight: '600', margin: 0 }}>
+                        {mod.subtitle}
+                      </h4>
+                      <p style={{ color: 'var(--color-slate)', fontSize: '13px', marginTop: '6px', maxWidth: '400px', margin: '6px auto 0 auto', lineHeight: '1.5' }}>
+                        This module workspace is currently synchronized with staff administrative systems.
+                      </p>
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* ATTENDANCE DETAIL MODAL */}
+      {/* ATTENDANCE DETAIL MODAL (Apple Flat Gallery White Dialog) */}
       {selectedStudentDetail && (
         <div
           style={{
@@ -2782,152 +1769,69 @@ export default function StaffPortalModule({ user }) {
             left: 0,
             right: 0,
             bottom: 0,
-            background: 'rgba(15, 23, 42, 0.85)',
+            background: 'rgba(0, 0, 0, 0.4)',
+            backdropFilter: 'blur(20px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 10000,
             boxSizing: 'border-box',
-            padding: '1.5rem'
+            padding: '20px'
           }}
         >
           <div
             style={{
-              background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98))',
-              border: '1px solid rgba(245, 158, 11, 0.4)',
-              borderRadius: '20px',
+              background: 'var(--color-gallery-white)',
+              border: '1px solid var(--color-hairline-silver)',
+              borderRadius: 'var(--radius-cards)',
               width: '100%',
-              maxWidth: '560px',
-              padding: '1.75rem',
-              boxShadow: '0 24px 48px rgba(0, 0, 0, 0.5)',
+              maxWidth: '520px',
+              padding: 'var(--spacing-28)',
               position: 'relative',
               display: 'flex',
               flexDirection: 'column',
-              gap: '1.25rem'
+              gap: '16px'
             }}
           >
-            {/* Modal Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <h4 style={{ color: '#ffffff', fontSize: '1.25rem', fontWeight: '800', margin: 0 }}>
+                <h4 style={{ color: 'var(--color-ink)', fontSize: '18px', fontWeight: '600', margin: 0 }}>
                   Attendance Log Details
                 </h4>
-                <p style={{ color: '#94a3b8', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
-                  Student: <strong style={{ color: '#f59e0b' }}>{selectedStudentDetail.firstName} {selectedStudentDetail.lastName}</strong> ({selectedStudentDetail.studentId})
+                <p style={{ color: 'var(--color-slate)', fontSize: '13px', margin: '4px 0 0 0' }}>
+                  Student: <strong style={{ color: 'var(--color-ink)' }}>{selectedStudentDetail.firstName} {selectedStudentDetail.lastName}</strong>
                 </p>
               </div>
               <button
                 onClick={() => setSelectedStudentDetail(null)}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  border: 'none',
-                  borderRadius: '50%',
-                  width: '32px',
-                  height: '32px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#94a3b8',
-                  cursor: 'pointer',
-                  transition: 'background 0.2s'
-                }}
+                className="btn-apple-outline"
+                style={{ padding: '4px 8px', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
-                <X size={16} />
+                <X size={14} />
               </button>
             </div>
 
-            {/* Modal Info Row */}
-            <div style={{ background: 'rgba(15, 23, 42, 0.5)', border: '1px solid rgba(255, 255, 255, 0.05)', padding: '0.85rem 1rem', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <span style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '700', display: 'block' }}>Parent Name</span>
-                <span style={{ color: '#ffffff', fontSize: '0.9rem', fontWeight: '600' }}>{selectedStudentDetail.parentName}</span>
-              </div>
-              <div>
-                <span style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '700', display: 'block', textAlign: 'right' }}>Class & Section</span>
-                <span style={{ color: '#f59e0b', fontSize: '0.9rem', fontWeight: '700' }}>C{selectedStudentDetail.classStandard} - Sec {selectedStudentDetail.sectionName}</span>
-              </div>
-            </div>
-
-            {/* Modal Associated Faculty */}
-            {(() => {
-              const modalFaculty = getClassFaculty();
-              if (modalFaculty.length === 0) return null;
-              return (
-                <div style={{ background: 'rgba(15, 23, 42, 0.4)', border: '1px solid rgba(255, 255, 255, 0.05)', padding: '0.65rem 0.85rem', borderRadius: '12px' }}>
-                  <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', display: 'block', marginBottom: '0.35rem' }}>Class Faculty & Subjects</span>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-                    {modalFaculty.map((fac, idx) => (
-                      <span key={idx} style={{ background: 'rgba(245, 158, 11, 0.08)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.2)', padding: '0.15rem 0.45rem', borderRadius: '6px', fontSize: '0.72rem', fontWeight: '700' }}>
-                        {fac.teacher} ({fac.subject})
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Modal Month/Year Selector */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'space-between', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '1rem' }}>
-              <span style={{ color: '#ffffff', fontSize: '0.85rem', fontWeight: '700' }}>Choose Log Month:</span>
-              <div style={{ display: 'flex', gap: '0.4rem' }}>
-                <select
-                  value={detailModalMonth}
-                  onChange={(e) => setDetailModalMonth(parseInt(e.target.value))}
-                  style={{ background: 'rgba(30, 41, 59, 0.9)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '8px', padding: '0.35rem 0.5rem', fontSize: '0.82rem', fontWeight: '700', outline: 'none', cursor: 'pointer' }}
-                >
-                  {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((mName, mIdx) => (
-                    <option key={mIdx + 1} value={mIdx + 1}>{mName}</option>
-                  ))}
-                </select>
-                <select
-                  value={detailModalYear}
-                  onChange={(e) => setDetailModalYear(parseInt(e.target.value))}
-                  style={{ background: 'rgba(30, 41, 59, 0.9)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '8px', padding: '0.35rem 0.5rem', fontSize: '0.82rem', fontWeight: '700', outline: 'none', cursor: 'pointer' }}
-                >
-                  {[2025, 2026, 2027, 2028].map(yr => (
-                    <option key={yr} value={yr}>{yr}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Modal Daily Logs List */}
-            <div style={{ flex: 1, overflowY: 'auto', maxHeight: '260px', paddingRight: '0.4rem' }}>
+            <div style={{ maxHeight: '240px', overflowY: 'auto' }}>
               {studentDetailLoading ? (
-                <div style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
-                  <RefreshCw size={20} className="spin" color="#f59e0b" style={{ marginBottom: '0.5rem' }} />
-                  <div style={{ fontSize: '0.85rem' }}>Fetching daily logs...</div>
-                </div>
+                <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-slate)' }}>Fetching daily logs...</div>
               ) : selectedStudentAttendance.length === 0 ? (
-                <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b', fontSize: '0.85rem' }}>
+                <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-slate)', fontSize: '13px' }}>
                   No attendance records found for this student in the selected month.
                 </div>
               ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', color: '#ffffff' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', color: 'var(--color-ink)' }}>
                   <thead>
-                    <tr style={{ background: 'rgba(30, 41, 59, 0.7)', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', color: '#94a3b8' }}>
-                      <th style={{ padding: '0.6rem 0.85rem', textAlign: 'left' }}>Date</th>
-                      <th style={{ padding: '0.6rem 0.85rem', textAlign: 'center' }}>Status</th>
+                    <tr style={{ background: 'var(--color-studio-mist)', borderBottom: '1px solid var(--color-hairline-silver)', color: 'var(--color-slate)', fontSize: '11px', textTransform: 'uppercase' }}>
+                      <th style={{ padding: '8px 12px', textAlign: 'left' }}>Date</th>
+                      <th style={{ padding: '8px 12px', textAlign: 'center' }}>Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {selectedStudentAttendance.map((record, rIdx) => (
-                      <tr key={record.id || rIdx} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)', background: rIdx % 2 === 0 ? 'rgba(15, 23, 42, 0.2)' : 'rgba(30, 41, 59, 0.2)' }}>
-                        <td style={{ padding: '0.6rem 0.85rem', color: '#e2e8f0', fontWeight: '500' }}>
-                          {record.attendanceDate}
-                        </td>
-                        <td style={{ padding: '0.6rem 0.85rem', textAlign: 'center' }}>
-                          <span
-                            style={{
-                              background: record.status === 'PRESENT' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                              color: record.status === 'PRESENT' ? '#10b981' : '#f87171',
-                              border: record.status === 'PRESENT' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
-                              padding: '0.15rem 0.5rem',
-                              borderRadius: '6px',
-                              fontSize: '0.72rem',
-                              fontWeight: '700'
-                            }}
-                          >
+                      <tr key={record.id || rIdx} style={{ borderBottom: '1px solid var(--color-control-gray)', background: rIdx % 2 === 0 ? 'var(--color-gallery-white)' : 'var(--color-studio-mist)' }}>
+                        <td style={{ padding: '8px 12px', color: 'var(--color-ink)' }}>{record.attendanceDate}</td>
+                        <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                          <span style={{ fontSize: '11px', fontWeight: '600', color: record.status === 'PRESENT' ? 'var(--color-pricing-blue)' : 'var(--color-launch-orange)' }}>
                             {record.status}
                           </span>
                         </td>
@@ -2938,21 +1842,11 @@ export default function StaffPortalModule({ user }) {
               )}
             </div>
 
-            {/* Modal Footer */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--color-control-gray)', paddingTop: '12px' }}>
               <button
                 onClick={() => setSelectedStudentDetail(null)}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.06)',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  borderRadius: '8px',
-                  padding: '0.5rem 1.25rem',
-                  color: '#ffffff',
-                  fontSize: '0.85rem',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  transition: 'background 0.2s'
-                }}
+                className="btn-apple-outline"
+                style={{ padding: '6px 16px', fontSize: '13px' }}
               >
                 Close
               </button>

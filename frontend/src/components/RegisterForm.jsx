@@ -35,7 +35,7 @@ export default function RegisterForm({ onRegister, onSwitchToLogin }) {
     if (loading) return;
 
     if (formData.role === 'ADMIN') {
-      setError('Registration for ADMIN role is disabled by system policy.');
+      setError('Registration for ADMIN role is restricted by system policy.');
       return;
     }
 
@@ -52,7 +52,7 @@ export default function RegisterForm({ onRegister, onSwitchToLogin }) {
     setLoading(true);
     try {
       await onRegister(formData);
-      setSuccess('Account created successfully in MySQL! Navigating to Sign In page...');
+      setSuccess('Account created successfully. Navigating to Sign In...');
       setTimeout(() => {
         onSwitchToLogin(formData.email, formData.password);
       }, 1500);
@@ -63,23 +63,26 @@ export default function RegisterForm({ onRegister, onSwitchToLogin }) {
   };
 
   return (
-    <div className="auth-card wide-card">
-      <div className="card-header-icon">
-        <UserPlus size={28} />
+    <div style={{ width: '100%' }}>
+      <div style={{ textAlign: 'center', marginBottom: 'var(--spacing-20)' }}>
+        <h2 style={{ fontFamily: 'var(--font-sf-pro-display)', fontSize: '24px', fontWeight: '600', color: 'var(--color-ink)', margin: '0 0 6px 0' }}>
+          Create an Account
+        </h2>
+        <p style={{ fontSize: '13px', color: 'var(--color-slate)', margin: 0 }}>
+          Register your campus profile for portal access
+        </p>
       </div>
-      <h2 className="card-title">Create Account</h2>
-      <p className="card-subtitle">Register for your Smart Attendance Management account</p>
 
       {error && (
-        <div className="alert-banner error">
-          <AlertCircle size={18} />
+        <div className="alert-banner error" style={{ marginBottom: '16px' }}>
+          <AlertCircle size={16} />
           <span>{error}</span>
         </div>
       )}
 
       {success && (
-        <div className="alert-banner success">
-          <CheckCircle2 size={18} />
+        <div className="alert-banner success" style={{ marginBottom: '16px' }}>
+          <CheckCircle2 size={16} />
           <span>{success}</span>
         </div>
       )}
@@ -89,7 +92,7 @@ export default function RegisterForm({ onRegister, onSwitchToLogin }) {
           <div className="form-group">
             <label className="form-label">First Name</label>
             <div className="input-wrapper">
-              <User className="input-icon" size={18} />
+              <User className="input-icon" size={16} />
               <input
                 type="text"
                 name="firstName"
@@ -106,12 +109,12 @@ export default function RegisterForm({ onRegister, onSwitchToLogin }) {
           <div className="form-group">
             <label className="form-label">Last Name</label>
             <div className="input-wrapper">
-              <User className="input-icon" size={18} />
+              <User className="input-icon" size={16} />
               <input
                 type="text"
                 name="lastName"
                 className="form-input"
-                placeholder="Doe"
+                placeholder="Appleseed"
                 value={formData.lastName}
                 onChange={handleChange}
                 autoComplete="off"
@@ -123,12 +126,12 @@ export default function RegisterForm({ onRegister, onSwitchToLogin }) {
           <div className="form-group">
             <label className="form-label">Username</label>
             <div className="input-wrapper">
-              <User className="input-icon" size={18} />
+              <User className="input-icon" size={16} />
               <input
                 type="text"
                 name="username"
                 className="form-input"
-                placeholder="johndoe"
+                placeholder="jappleseed"
                 value={formData.username}
                 onChange={handleChange}
                 autoComplete="off"
@@ -140,12 +143,12 @@ export default function RegisterForm({ onRegister, onSwitchToLogin }) {
           <div className="form-group">
             <label className="form-label">Email Address</label>
             <div className="input-wrapper">
-              <Mail className="input-icon" size={18} />
+              <Mail className="input-icon" size={16} />
               <input
                 type="email"
                 name="email"
                 className="form-input"
-                placeholder="john.doe@school.com"
+                placeholder="john@school.com"
                 value={formData.email}
                 onChange={handleChange}
                 autoComplete="off"
@@ -155,7 +158,7 @@ export default function RegisterForm({ onRegister, onSwitchToLogin }) {
           </div>
 
           <div className="form-group full-width">
-            <label className="form-label">Role Selection</label>
+            <label className="form-label">Account Role</label>
             <select
               name="role"
               className="form-select"
@@ -163,23 +166,17 @@ export default function RegisterForm({ onRegister, onSwitchToLogin }) {
               onChange={handleChange}
               required
             >
-              <option value="ADMIN" disabled>
-                Admin (Disabled by system policy)
-              </option>
+              <option value="STUDENT">Student</option>
               <option value="TEACHER">Teacher</option>
               <option value="STAFF">Staff</option>
               <option value="PARENT">Parent</option>
-              <option value="STUDENT">Student</option>
             </select>
-            {formData.role === 'ADMIN' && (
-              <span className="disabled-badge">Admin registration is disabled by system policy.</span>
-            )}
           </div>
 
           <div className="form-group">
             <label className="form-label">Password</label>
             <div className="input-wrapper" style={{ position: 'relative' }}>
-              <Lock className="input-icon" size={18} />
+              <Lock className="input-icon" size={16} />
               <input
                 type={showPassword ? 'text' : 'password'}
                 name="password"
@@ -197,12 +194,12 @@ export default function RegisterForm({ onRegister, onSwitchToLogin }) {
                 title={showPassword ? 'Hide Password' : 'Show Password'}
                 style={{
                   position: 'absolute',
-                  right: '10px',
+                  right: '12px',
                   top: '50%',
                   transform: 'translateY(-50%)',
                   background: 'transparent',
                   border: 'none',
-                  color: '#94a3b8',
+                  color: 'var(--color-steel)',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
@@ -210,7 +207,7 @@ export default function RegisterForm({ onRegister, onSwitchToLogin }) {
                   padding: '4px'
                 }}
               >
-                {showPassword ? <EyeOff size={18} color="#a5b4fc" /> : <Eye size={18} color="#94a3b8" />}
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
           </div>
@@ -218,7 +215,7 @@ export default function RegisterForm({ onRegister, onSwitchToLogin }) {
           <div className="form-group">
             <label className="form-label">Confirm Password</label>
             <div className="input-wrapper" style={{ position: 'relative' }}>
-              <ShieldCheck className="input-icon" size={18} />
+              <ShieldCheck className="input-icon" size={16} />
               <input
                 type={showConfirmPassword ? 'text' : 'password'}
                 name="confirmPassword"
@@ -236,12 +233,12 @@ export default function RegisterForm({ onRegister, onSwitchToLogin }) {
                 title={showConfirmPassword ? 'Hide Password' : 'Show Password'}
                 style={{
                   position: 'absolute',
-                  right: '10px',
+                  right: '12px',
                   top: '50%',
                   transform: 'translateY(-50%)',
                   background: 'transparent',
                   border: 'none',
-                  color: '#94a3b8',
+                  color: 'var(--color-steel)',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
@@ -249,23 +246,16 @@ export default function RegisterForm({ onRegister, onSwitchToLogin }) {
                   padding: '4px'
                 }}
               >
-                {showConfirmPassword ? <EyeOff size={18} color="#a5b4fc" /> : <Eye size={18} color="#94a3b8" />}
+                {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
           </div>
         </div>
 
-        <button type="submit" className="btn-submit" disabled={loading}>
-          {loading ? 'Registering Account...' : 'Register Account'}
+        <button type="submit" className="btn-submit" disabled={loading} style={{ marginTop: '12px' }}>
+          {loading ? 'Creating Account...' : 'Create Account'}
         </button>
       </form>
-
-      <p className="switch-text">
-        Already have an account?{' '}
-        <span className="switch-link" onClick={() => onSwitchToLogin()}>
-          Sign in here
-        </span>
-      </p>
     </div>
   );
 }

@@ -8,7 +8,7 @@ export default function StaffEnquiryModule() {
   const [enquiriesList, setEnquiriesList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeSubTab, setActiveSubTab] = useState('STUDENT'); // 'STUDENT' | 'PARENT'
+  const [activeSubTab, setActiveSubTab] = useState('STUDENT');
   const [responseInputs, setResponseInputs] = useState({});
   const [editingIds, setEditingIds] = useState({});
   const [submittingId, setSubmittingId] = useState(null);
@@ -87,7 +87,6 @@ export default function StaffEnquiryModule() {
       }
 
       if (res && res.ok) {
-        // Optimistic local state update
         setEnquiriesList((prev) =>
           prev.map((item) =>
             String(item.id) === String(id) && item.applicantType === type
@@ -95,7 +94,6 @@ export default function StaffEnquiryModule() {
               : item
           )
         );
-        // Clear temporary draft & exit edit mode so official sent card shows
         setResponseInputs((prev) => {
           const next = { ...prev };
           delete next[key];
@@ -114,7 +112,6 @@ export default function StaffEnquiryModule() {
   const studentEnquiries = enquiriesList.filter((e) => e.applicantType === 'STUDENT');
   const parentEnquiries = enquiriesList.filter((e) => e.applicantType === 'PARENT');
 
-  // Priority Sort: PENDING / Unresponded enquiries appear FIRST at the top
   const sortUnrespondedFirst = (list) => {
     return [...list].sort((a, b) => {
       const isPendingA = a.status === 'PENDING' || (!a.response && !a.adminResponse);
@@ -152,329 +149,272 @@ export default function StaffEnquiryModule() {
 
   return (
     <div className="module-card">
-      <div className="module-header">
-        <div className="module-icon-badge staff" style={{ background: 'rgba(99, 102, 241, 0.15)', borderColor: 'rgba(99, 102, 241, 0.4)' }}>
-          <Shield size={22} color="#818cf8" />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div className="card-header-icon" style={{ margin: 0 }}>
+            <Shield size={22} color="var(--color-ink)" />
+          </div>
+          <div>
+            <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--color-ink)' }}>Staff Helpdesk & Inquiry Portal</h2>
+            <p style={{ fontSize: '14px', color: 'var(--color-slate)' }}>
+              Respond to operational, transportation, and facilities queries from students & parents
+            </p>
+          </div>
         </div>
-        <div style={{ flex: 1 }}>
-          <h2 className="module-title">Staff Enquiry Management Module</h2>
-          <p className="module-subtitle">
-            Powered by <code>staff-enquiry-service</code> (View and respond to student & parent inquiries, responses saved to MySQL)
-          </p>
-        </div>
-        <button onClick={fetchEnquiries} disabled={loading} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <RefreshCw size={14} className={loading ? 'spin' : ''} />
+
+        <button onClick={fetchEnquiries} disabled={loading} className="btn-outlined-explore">
+          <RefreshCw size={13} className={loading ? 'spin' : ''} />
           Refresh
         </button>
       </div>
 
       {/* Stats Row */}
-      <div className="stats-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', marginBottom: '1.25rem' }}>
-        <div className="stat-card" style={{ background: 'rgba(129, 140, 248, 0.1)', border: '1px solid rgba(129, 140, 248, 0.25)', borderRadius: '12px', padding: '1rem' }}>
-          <div style={{ fontSize: '0.8rem', color: '#a5b4fc', textTransform: 'uppercase', fontWeight: '700' }}>Student Enquiries</div>
-          <div style={{ fontSize: '1.75rem', fontWeight: '800', color: '#ffffff', marginTop: '0.2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span>{studentEnquiries.length}</span>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        <div className="claim-card">
+          <div className="claim-label">Student Inquiries</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px' }}>
+            <span style={{ fontSize: '24px', fontWeight: 600, color: 'var(--color-ink)' }}>{studentEnquiries.length}</span>
             {studentPendingResponseCount > 0 ? (
-              <span style={{ fontSize: '0.75rem', background: 'rgba(129, 140, 248, 0.2)', color: '#c7d2fe', border: '1px solid rgba(129, 140, 248, 0.4)', padding: '0.2rem 0.6rem', borderRadius: '12px' }}>
-                {studentPendingResponseCount} Pending Response
-              </span>
+              <span className="launch-status-label">{studentPendingResponseCount} Needs Response</span>
             ) : (
-              <span style={{ fontSize: '0.75rem', background: 'rgba(34, 197, 94, 0.2)', color: '#4ade80', border: '1px solid rgba(34, 197, 94, 0.4)', padding: '0.2rem 0.6rem', borderRadius: '12px' }}>
-                ✓ All Responded
-              </span>
+              <span className="role-pill student">✓ Complete</span>
             )}
           </div>
         </div>
 
-        <div className="stat-card" style={{ background: 'rgba(236, 72, 153, 0.1)', border: '1px solid rgba(236, 72, 153, 0.25)', borderRadius: '12px', padding: '1rem' }}>
-          <div style={{ fontSize: '0.8rem', color: '#f472b6', textTransform: 'uppercase', fontWeight: '700' }}>Parent Enquiries</div>
-          <div style={{ fontSize: '1.75rem', fontWeight: '800', color: '#ffffff', marginTop: '0.2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span>{parentEnquiries.length}</span>
+        <div className="claim-card">
+          <div className="claim-label">Parent Inquiries</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px' }}>
+            <span style={{ fontSize: '24px', fontWeight: 600, color: 'var(--color-ink)' }}>{parentEnquiries.length}</span>
             {parentPendingResponseCount > 0 ? (
-              <span style={{ fontSize: '0.75rem', background: 'rgba(236, 72, 153, 0.2)', color: '#f472b6', border: '1px solid rgba(236, 72, 153, 0.4)', padding: '0.2rem 0.6rem', borderRadius: '12px' }}>
-                {parentPendingResponseCount} Pending Response
-              </span>
+              <span className="launch-status-label">{parentPendingResponseCount} Needs Response</span>
             ) : (
-              <span style={{ fontSize: '0.75rem', background: 'rgba(34, 197, 94, 0.2)', color: '#4ade80', border: '1px solid rgba(34, 197, 94, 0.4)', padding: '0.2rem 0.6rem', borderRadius: '12px' }}>
-                ✓ All Responded
-              </span>
+              <span className="role-pill student">✓ Complete</span>
             )}
           </div>
         </div>
       </div>
 
       {/* Sub-Tab Navigation Bar & Search */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '8px' }}>
           <button
-            className={`portal-tab-btn ${activeSubTab === 'STUDENT' ? 'active-enquiry' : ''}`}
+            className={`btn-outlined-explore ${activeSubTab === 'STUDENT' ? 'active' : ''}`}
             onClick={() => setActiveSubTab('STUDENT')}
-            style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
           >
-            <Users size={16} />
-            <span>Student Enquiries ({studentEnquiries.length})</span>
+            <Users size={13} />
+            Student Inquiries ({studentEnquiries.length})
           </button>
 
           <button
-            className={`portal-tab-btn ${activeSubTab === 'PARENT' ? 'active-enquiry' : ''}`}
+            className={`btn-outlined-explore ${activeSubTab === 'PARENT' ? 'active' : ''}`}
             onClick={() => setActiveSubTab('PARENT')}
-            style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
           >
-            <UserCheck size={16} />
-            <span>Parent Enquiries ({parentEnquiries.length})</span>
+            <UserCheck size={13} />
+            Parent Inquiries ({parentEnquiries.length})
           </button>
         </div>
 
         <div style={{ position: 'relative', minWidth: '240px' }}>
-          <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+          <Search size={14} color="var(--color-steel)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
           <input
             type="text"
-            placeholder="Search enquiries or responses..."
+            placeholder="Search queries..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="form-input"
-            style={{ paddingLeft: '2.3rem' }}
+            style={{ paddingLeft: '38px', height: '36px' }}
           />
         </div>
       </div>
 
       {/* VIEW 1: STUDENT ENQUIRIES TABLE */}
       {activeSubTab === 'STUDENT' && (
-        <div className="history-section" style={{ marginTop: 0 }}>
-          <h3 className="history-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Users size={16} color="#818cf8" />
-            <span>Student Enquiries Table (Pending enquiries listed at top)</span>
-          </h3>
-          <div className="table-wrapper">
-            <table className="portal-table">
-              <thead>
-                <tr>
-                  <th>Enquiry ID</th>
-                  <th>Student Name</th>
-                  <th>Class</th>
-                  <th>Status</th>
-                  <th>Enquiry Message</th>
-                  <th>Staff Response</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredStudents.length > 0 ? (
-                  filteredStudents.map((enq) => {
-                    const key = `STUDENT-${enq.id}`;
-                    const currentResponse = enq.response || enq.adminResponse;
-                    const hasResponse = enq.status === 'RESPONDED' || Boolean(currentResponse && currentResponse.trim());
-                    const isEditing = editingIds[key];
+        <div className="table-wrapper">
+          <table className="portal-table">
+            <thead>
+              <tr>
+                <th>Enquiry ID</th>
+                <th>Student</th>
+                <th>Class</th>
+                <th>Status</th>
+                <th>Question</th>
+                <th>Staff Response</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredStudents.length > 0 ? (
+                filteredStudents.map((enq) => {
+                  const key = `STUDENT-${enq.id}`;
+                  const currentResponse = enq.response || enq.adminResponse;
+                  const hasResponse = enq.status === 'RESPONDED' || Boolean(currentResponse && currentResponse.trim());
+                  const isEditing = editingIds[key];
 
-                    return (
-                      <tr key={enq.id || enq.enquireId} style={{ background: !hasResponse ? 'rgba(236, 72, 153, 0.06)' : 'transparent' }}>
-                        <td>
-                          <span className="badge-unique enquire">
-                            {enq.enquireId}
+                  return (
+                    <tr key={enq.id || enq.enquireId}>
+                      <td>
+                        <span className="badge-unique">
+                          {enq.enquireId}
+                        </span>
+                      </td>
+                      <td><strong>{enq.firstName} {enq.lastName}</strong></td>
+                      <td>{enq.className}</td>
+                      <td>
+                        {hasResponse ? (
+                          <span className="role-pill student">
+                            ✓ Responded
                           </span>
-                        </td>
-                        <td><strong>{enq.firstName} {enq.lastName}</strong></td>
-                        <td><span className="class-pill">{enq.className}</span></td>
-                        <td>
-                          {hasResponse ? (
-                            <span className="role-pill teacher" style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', borderColor: 'rgba(34, 197, 94, 0.4)', fontSize: '0.75rem', padding: '0.2rem 0.6rem' }}>
-                              ✓ Responded
-                            </span>
-                          ) : (
-                            <span className="role-pill admin" style={{ background: 'rgba(236, 72, 153, 0.2)', color: '#f472b6', borderColor: 'rgba(236, 72, 153, 0.5)', fontSize: '0.75rem', padding: '0.2rem 0.6rem', fontWeight: '700' }}>
-                              • Pending Response
-                            </span>
-                          )}
-                        </td>
-                        <td style={{ maxWidth: '240px', whiteSpace: 'normal', wordBreak: 'break-word' }}>
-                          {enq.enquire}
-                        </td>
-                        <td style={{ minWidth: '360px', maxWidth: '460px', whiteSpace: 'normal' }}>
-                          {hasResponse && !isEditing ? (
-                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem', background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: '8px', padding: '0.5rem 0.75rem' }}>
-                              <div style={{ fontSize: '0.85rem', color: '#ffffff', lineHeight: '1.4' }}>
-                                <strong style={{ color: '#4ade80', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', marginBottom: '0.2rem' }}>
-                                  <CheckCircle2 size={13} color="#4ade80" /> Official Response Sent:
-                                </strong>
-                                {currentResponse}
-                              </div>
-                              <button onClick={() => toggleEditing(key, currentResponse)} className="btn-secondary" style={{ padding: '0.2rem 0.4rem', fontSize: '0.7rem', flexShrink: 0 }}>
-                                <Edit2 size={11} /> Edit
-                              </button>
+                        ) : (
+                          <span className="role-pill parent">
+                            • Awaiting Reply
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ maxWidth: '240px', whiteSpace: 'normal' }}>
+                        {enq.enquire}
+                      </td>
+                      <td style={{ minWidth: '340px', maxWidth: '440px', whiteSpace: 'normal' }}>
+                        {hasResponse && !isEditing ? (
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', backgroundColor: 'var(--color-studio-mist)', border: '1px solid var(--color-control-gray)', borderRadius: '10px', padding: '8px 12px' }}>
+                            <div style={{ fontSize: '13px', color: 'var(--color-ink)', lineHeight: 1.4 }}>
+                              <strong style={{ color: 'var(--color-apple-blue)', display: 'block', fontSize: '11px', textTransform: 'uppercase', marginBottom: '2px' }}>
+                                Staff Response
+                              </strong>
+                              {currentResponse}
                             </div>
-                          ) : (
-                            <div style={{ display: 'flex', gap: '0.4rem', width: '100%', alignItems: 'center' }}>
-                              <input
-                                type="text"
-                                placeholder="Type staff response..."
-                                value={responseInputs[key] !== undefined ? responseInputs[key] : (currentResponse || '')}
-                                onChange={(e) => handleResponseChange(key, e.target.value)}
-                                className="form-input no-icon"
-                                style={{
-                                  padding: '0.45rem 0.75rem',
-                                  fontSize: '0.85rem',
-                                  flex: 1,
-                                  color: '#ffffff',
-                                  background: '#1a2035',
-                                  border: '1px solid rgba(236, 72, 153, 0.4)',
-                                  borderRadius: '8px',
-                                }}
-                              />
-                              <button
-                                onClick={() => handleSendResponse(enq.id, 'STUDENT')}
-                                disabled={submittingId === key}
-                                className="btn-submit staff-btn"
-                                style={{
-                                  width: 'auto',
-                                  minWidth: 'auto',
-                                  padding: '0.45rem 0.65rem',
-                                  fontSize: '0.75rem',
-                                  flexShrink: 0,
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '0.3rem',
-                                  background: '#6366f1',
-                                  color: '#ffffff',
-                                }}
-                              >
-                                <Send size={12} /> Send
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
-                      {loading ? 'Loading student enquiries...' : 'No student enquiry records found.'}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                            <button onClick={() => toggleEditing(key, currentResponse)} className="btn-outlined-explore" style={{ padding: '2px 8px', fontSize: '11px', flexShrink: 0 }}>
+                              <Edit2 size={10} /> Edit
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', gap: '6px', width: '100%', alignItems: 'center' }}>
+                            <input
+                              type="text"
+                              placeholder="Type staff response..."
+                              value={responseInputs[key] !== undefined ? responseInputs[key] : (currentResponse || '')}
+                              onChange={(e) => handleResponseChange(key, e.target.value)}
+                              className="form-input no-icon"
+                              style={{ height: '34px', fontSize: '13px', flex: 1 }}
+                            />
+                            <button
+                              onClick={() => handleSendResponse(enq.id, 'STUDENT')}
+                              disabled={submittingId === key}
+                              className="btn-pricing-blue"
+                              style={{ padding: '6px 12px', fontSize: '12px', flexShrink: 0 }}
+                            >
+                              <Send size={11} /> Send
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '32px', color: 'var(--color-slate)' }}>
+                    {loading ? 'Loading queries...' : 'No student enquiries found.'}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       )}
 
       {/* VIEW 2: PARENT ENQUIRIES TABLE */}
       {activeSubTab === 'PARENT' && (
-        <div className="history-section" style={{ marginTop: 0 }}>
-          <h3 className="history-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <UserCheck size={16} color="#f472b6" />
-            <span>Parent Enquiries Table (Pending enquiries listed at top)</span>
-          </h3>
-          <div className="table-wrapper">
-            <table className="portal-table">
-              <thead>
-                <tr>
-                  <th>Enquiry ID</th>
-                  <th>Parent Name</th>
-                  <th>Child Name & Class</th>
-                  <th>Status</th>
-                  <th>Enquiry Message</th>
-                  <th>Staff Response</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredParents.length > 0 ? (
-                  filteredParents.map((enq) => {
-                    const key = `PARENT-${enq.id}`;
-                    const currentResponse = enq.response || enq.adminResponse;
-                    const hasResponse = enq.status === 'RESPONDED' || Boolean(currentResponse && currentResponse.trim());
-                    const isEditing = editingIds[key];
+        <div className="table-wrapper">
+          <table className="portal-table">
+            <thead>
+              <tr>
+                <th>Enquiry ID</th>
+                <th>Parent</th>
+                <th>Child & Class</th>
+                <th>Status</th>
+                <th>Question</th>
+                <th>Staff Response</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredParents.length > 0 ? (
+                filteredParents.map((enq) => {
+                  const key = `PARENT-${enq.id}`;
+                  const currentResponse = enq.response || enq.adminResponse;
+                  const hasResponse = enq.status === 'RESPONDED' || Boolean(currentResponse && currentResponse.trim());
+                  const isEditing = editingIds[key];
 
-                    return (
-                      <tr key={enq.id || enq.enquireId} style={{ background: !hasResponse ? 'rgba(236, 72, 153, 0.06)' : 'transparent' }}>
-                        <td>
-                          <span className="badge-unique enquire">
-                            {enq.enquireId}
+                  return (
+                    <tr key={enq.id || enq.enquireId}>
+                      <td>
+                        <span className="badge-unique">
+                          {enq.enquireId}
+                        </span>
+                      </td>
+                      <td>{enq.parentName || `${enq.firstName} ${enq.lastName}`}</td>
+                      <td>
+                        <strong>{enq.childName}</strong> • {enq.className}
+                      </td>
+                      <td>
+                        {hasResponse ? (
+                          <span className="role-pill student">
+                            ✓ Responded
                           </span>
-                        </td>
-                        <td>{enq.parentName || `${enq.firstName} ${enq.lastName}`}</td>
-                        <td>
-                          <strong>{enq.childName}</strong> <span className="class-pill">{enq.className}</span>
-                        </td>
-                        <td>
-                          {hasResponse ? (
-                            <span className="role-pill teacher" style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', borderColor: 'rgba(34, 197, 94, 0.4)', fontSize: '0.75rem', padding: '0.2rem 0.6rem' }}>
-                              ✓ Responded
-                            </span>
-                          ) : (
-                            <span className="role-pill admin" style={{ background: 'rgba(236, 72, 153, 0.2)', color: '#f472b6', borderColor: 'rgba(236, 72, 153, 0.5)', fontSize: '0.75rem', padding: '0.2rem 0.6rem', fontWeight: '700' }}>
-                              • Pending Response
-                            </span>
-                          )}
-                        </td>
-                        <td style={{ maxWidth: '240px', whiteSpace: 'normal', wordBreak: 'break-word' }}>
-                          {enq.enquire}
-                        </td>
-                        <td style={{ minWidth: '360px', maxWidth: '460px', whiteSpace: 'normal' }}>
-                          {hasResponse && !isEditing ? (
-                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem', background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: '8px', padding: '0.5rem 0.75rem' }}>
-                              <div style={{ fontSize: '0.85rem', color: '#ffffff', lineHeight: '1.4' }}>
-                                <strong style={{ color: '#4ade80', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', marginBottom: '0.2rem' }}>
-                                  <CheckCircle2 size={13} color="#4ade80" /> Official Response Sent:
-                                </strong>
-                                {currentResponse}
-                              </div>
-                              <button onClick={() => toggleEditing(key, currentResponse)} className="btn-secondary" style={{ padding: '0.2rem 0.4rem', fontSize: '0.7rem', flexShrink: 0 }}>
-                                <Edit2 size={11} /> Edit
-                              </button>
+                        ) : (
+                          <span className="role-pill parent">
+                            • Awaiting Reply
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ maxWidth: '240px', whiteSpace: 'normal' }}>
+                        {enq.enquire}
+                      </td>
+                      <td style={{ minWidth: '340px', maxWidth: '440px', whiteSpace: 'normal' }}>
+                        {hasResponse && !isEditing ? (
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', backgroundColor: 'var(--color-studio-mist)', border: '1px solid var(--color-control-gray)', borderRadius: '10px', padding: '8px 12px' }}>
+                            <div style={{ fontSize: '13px', color: 'var(--color-ink)', lineHeight: 1.4 }}>
+                              <strong style={{ color: 'var(--color-apple-blue)', display: 'block', fontSize: '11px', textTransform: 'uppercase', marginBottom: '2px' }}>
+                                Staff Response
+                              </strong>
+                              {currentResponse}
                             </div>
-                          ) : (
-                            <div style={{ display: 'flex', gap: '0.4rem', width: '100%', alignItems: 'center' }}>
-                              <input
-                                type="text"
-                                placeholder="Type staff response..."
-                                value={responseInputs[key] !== undefined ? responseInputs[key] : (currentResponse || '')}
-                                onChange={(e) => handleResponseChange(key, e.target.value)}
-                                className="form-input no-icon"
-                                style={{
-                                  padding: '0.45rem 0.75rem',
-                                  fontSize: '0.85rem',
-                                  flex: 1,
-                                  color: '#ffffff',
-                                  background: '#1a2035',
-                                  border: '1px solid rgba(236, 72, 153, 0.4)',
-                                  borderRadius: '8px',
-                                }}
-                              />
-                              <button
-                                onClick={() => handleSendResponse(enq.id, 'PARENT')}
-                                disabled={submittingId === key}
-                                className="btn-submit staff-btn"
-                                style={{
-                                  width: 'auto',
-                                  minWidth: 'auto',
-                                  padding: '0.45rem 0.65rem',
-                                  fontSize: '0.75rem',
-                                  flexShrink: 0,
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '0.3rem',
-                                  background: '#6366f1',
-                                  color: '#ffffff',
-                                }}
-                              >
-                                <Send size={12} /> Send
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
-                      {loading ? 'Loading parent enquiries...' : 'No parent enquiry records found.'}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                            <button onClick={() => toggleEditing(key, currentResponse)} className="btn-outlined-explore" style={{ padding: '2px 8px', fontSize: '11px', flexShrink: 0 }}>
+                              <Edit2 size={10} /> Edit
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', gap: '6px', width: '100%', alignItems: 'center' }}>
+                            <input
+                              type="text"
+                              placeholder="Type staff response..."
+                              value={responseInputs[key] !== undefined ? responseInputs[key] : (currentResponse || '')}
+                              onChange={(e) => handleResponseChange(key, e.target.value)}
+                              className="form-input no-icon"
+                              style={{ height: '34px', fontSize: '13px', flex: 1 }}
+                            />
+                            <button
+                              onClick={() => handleSendResponse(enq.id, 'PARENT')}
+                              disabled={submittingId === key}
+                              className="btn-pricing-blue"
+                              style={{ padding: '6px 12px', fontSize: '12px', flexShrink: 0 }}
+                            >
+                              <Send size={11} /> Send
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '32px', color: 'var(--color-slate)' }}>
+                    {loading ? 'Loading queries...' : 'No parent enquiries found.'}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

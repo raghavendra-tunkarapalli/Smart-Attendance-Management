@@ -9,7 +9,7 @@ export default function AdminAdmissionModule() {
   const [loading, setLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeSubTab, setActiveSubTab] = useState('STUDENT'); // 'STUDENT' | 'PARENT'
+  const [activeSubTab, setActiveSubTab] = useState('STUDENT');
 
   useEffect(() => {
     fetchAdmissions();
@@ -46,7 +46,6 @@ export default function AdminAdmissionModule() {
         res = await fetch(directEndpoint, { method: 'PUT' }).catch(() => null);
       }
       if (res && res.ok) {
-        // Optimistic UI update
         setAdmissionsList((prev) =>
           prev.map((item) =>
             (item.id === id && item.applicantType === type) || (admissionId && item.admissionId === admissionId)
@@ -66,7 +65,6 @@ export default function AdminAdmissionModule() {
   const studentAdmissions = admissionsList.filter((a) => a.applicantType === 'STUDENT');
   const parentAdmissions = admissionsList.filter((a) => a.applicantType === 'PARENT');
 
-  // Sort function to prioritize PENDING status applications at the top
   const sortPendingFirst = (list) => {
     return [...list].sort((a, b) => {
       const statusA = (a.status || 'PENDING').toUpperCase();
@@ -101,20 +99,20 @@ export default function AdminAdmissionModule() {
     const s = (status || 'PENDING').toUpperCase();
     if (s === 'ACCEPTED') {
       return (
-        <span className="role-pill teacher" style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', borderColor: 'rgba(34, 197, 94, 0.4)', fontSize: '0.75rem', padding: '0.2rem 0.6rem' }}>
+        <span className="role-pill student">
           ✓ Accepted
         </span>
       );
     }
     if (s === 'REJECTED') {
       return (
-        <span className="role-pill admin" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', borderColor: 'rgba(239, 68, 68, 0.4)', fontSize: '0.75rem', padding: '0.2rem 0.6rem' }}>
-          ✗ Rejected
+        <span className="role-pill admin">
+          ✕ Rejected
         </span>
       );
     }
     return (
-      <span className="role-pill staff" style={{ background: 'rgba(234, 179, 8, 0.15)', color: '#fde047', borderColor: 'rgba(234, 179, 8, 0.4)', fontSize: '0.75rem', padding: '0.2rem 0.6rem' }}>
+      <span className="role-pill parent">
         • Pending
       </span>
     );
@@ -125,247 +123,208 @@ export default function AdminAdmissionModule() {
 
   return (
     <div className="module-card">
-      <div className="module-header">
-        <div className="module-icon-badge admission">
-          <ShieldCheck size={22} color="#a855f7" />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div className="card-header-icon" style={{ margin: 0 }}>
+            <ShieldCheck size={22} color="var(--color-ink)" />
+          </div>
+          <div>
+            <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--color-ink)' }}>Admin Admissions Management</h2>
+            <p style={{ fontSize: '14px', color: 'var(--color-slate)' }}>
+              Review, accept, or reject student and parent enrollment submissions
+            </p>
+          </div>
         </div>
-        <div style={{ flex: 1 }}>
-          <h2 className="module-title">Admin Admissions Management Module</h2>
-          <p className="module-subtitle">
-            Powered by <code>admin-admissions-service</code> (Pending applications listed first for immediate review)
-          </p>
-        </div>
-        <button onClick={fetchAdmissions} disabled={loading} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <RefreshCw size={14} className={loading ? 'spin' : ''} />
-          Refresh
+
+        <button onClick={fetchAdmissions} disabled={loading} className="btn-outlined-explore">
+          <RefreshCw size={13} className={loading ? 'spin' : ''} />
+          Refresh Registry
         </button>
       </div>
 
       {/* Stats Row */}
-      <div className="stats-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', marginBottom: '1.25rem' }}>
-        <div className="stat-card" style={{ background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.25)', borderRadius: '12px', padding: '1rem' }}>
-          <div style={{ fontSize: '0.8rem', color: '#60a5fa', textTransform: 'uppercase', fontWeight: '700' }}>Student Applications</div>
-          <div style={{ fontSize: '1.75rem', fontWeight: '800', color: '#ffffff', marginTop: '0.2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span>{studentAdmissions.length}</span>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        <div className="claim-card">
+          <div className="claim-label">Student Applications</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px' }}>
+            <span style={{ fontSize: '24px', fontWeight: 600, color: 'var(--color-ink)' }}>{studentAdmissions.length}</span>
             {studentPendingCount > 0 && (
-              <span style={{ fontSize: '0.75rem', background: 'rgba(234, 179, 8, 0.2)', color: '#fde047', border: '1px solid rgba(234, 179, 8, 0.4)', padding: '0.2rem 0.6rem', borderRadius: '12px' }}>
-                {studentPendingCount} Pending
-              </span>
+              <span className="launch-status-label">{studentPendingCount} Pending Review</span>
             )}
           </div>
         </div>
 
-        <div className="stat-card" style={{ background: 'rgba(236, 72, 153, 0.1)', border: '1px solid rgba(236, 72, 153, 0.25)', borderRadius: '12px', padding: '1rem' }}>
-          <div style={{ fontSize: '0.8rem', color: '#f472b6', textTransform: 'uppercase', fontWeight: '700' }}>Parent Applications</div>
-          <div style={{ fontSize: '1.75rem', fontWeight: '800', color: '#ffffff', marginTop: '0.2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span>{parentAdmissions.length}</span>
+        <div className="claim-card">
+          <div className="claim-label">Parent Applications</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px' }}>
+            <span style={{ fontSize: '24px', fontWeight: 600, color: 'var(--color-ink)' }}>{parentAdmissions.length}</span>
             {parentPendingCount > 0 && (
-              <span style={{ fontSize: '0.75rem', background: 'rgba(234, 179, 8, 0.2)', color: '#fde047', border: '1px solid rgba(234, 179, 8, 0.4)', padding: '0.2rem 0.6rem', borderRadius: '12px' }}>
-                {parentPendingCount} Pending
-              </span>
+              <span className="launch-status-label">{parentPendingCount} Pending Review</span>
             )}
           </div>
         </div>
       </div>
 
       {/* Sub-Tab Navigation Bar & Search */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '8px' }}>
           <button
-            className={`portal-tab-btn ${activeSubTab === 'STUDENT' ? 'active-admission' : ''}`}
+            className={`btn-outlined-explore ${activeSubTab === 'STUDENT' ? 'active' : ''}`}
             onClick={() => setActiveSubTab('STUDENT')}
-            style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
           >
-            <Users size={16} />
-            <span>Student Admissions ({studentAdmissions.length})</span>
+            <Users size={13} />
+            Student Admissions ({studentAdmissions.length})
           </button>
 
           <button
-            className={`portal-tab-btn ${activeSubTab === 'PARENT' ? 'active-admission' : ''}`}
+            className={`btn-outlined-explore ${activeSubTab === 'PARENT' ? 'active' : ''}`}
             onClick={() => setActiveSubTab('PARENT')}
-            style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
           >
-            <UserCheck size={16} />
-            <span>Parent Admissions ({parentAdmissions.length})</span>
+            <UserCheck size={13} />
+            Parent Admissions ({parentAdmissions.length})
           </button>
         </div>
 
         <div style={{ position: 'relative', minWidth: '240px' }}>
-          <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+          <Search size={14} color="var(--color-steel)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
           <input
             type="text"
             placeholder="Search admissions..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="form-input"
-            style={{ paddingLeft: '2.3rem' }}
+            style={{ paddingLeft: '38px', height: '36px' }}
           />
         </div>
       </div>
 
       {/* VIEW 1: STUDENT ADMISSIONS TABLE */}
       {activeSubTab === 'STUDENT' && (
-        <div className="history-section" style={{ marginTop: 0 }}>
-          <h3 className="history-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Users size={16} color="#60a5fa" />
-            <span>Student Admissions Table (Pending listed first)</span>
-          </h3>
-          <div className="table-wrapper">
-            <table className="portal-table">
-              <thead>
-                <tr>
-                  <th>Admission ID</th>
-                  <th>Student Name</th>
-                  <th>Class</th>
-                  <th>Section</th>
-                  <th>Parent Name</th>
-                  <th>Parent Email</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredStudents.length > 0 ? (
-                  filteredStudents.map((adm) => (
-                    <tr key={adm.id || adm.admissionId} style={{ background: (adm.status || 'PENDING').toUpperCase() === 'PENDING' ? 'rgba(234, 179, 8, 0.04)' : 'transparent' }}>
-                      <td>
-                        <span className="badge-unique admission">
-                          {adm.admissionId}
-                        </span>
-                      </td>
-                      <td><strong>{adm.firstName} {adm.lastName}</strong></td>
-                      <td><span className="class-pill">Class {adm.className}</span></td>
-                      <td><span className="role-pill staff" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.4)' }}>Section {adm.section || 'A'}</span></td>
-                      <td>{adm.parentName}</td>
-                      <td className="text-muted">{adm.parentEmail}</td>
-                      <td>{getStatusBadge(adm.status)}</td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '0.4rem' }}>
-                          <button
-                            onClick={() => handleStatusUpdate(adm.id, 'STUDENT', 'ACCEPTED', adm.admissionId)}
-                            disabled={updatingId === `STUDENT-${adm.id}`}
-                            className="btn-submit"
-                            style={{
-                              padding: '0.35rem 0.7rem',
-                              fontSize: '0.75rem',
-                              background: adm.status === 'ACCEPTED' ? 'rgba(34, 197, 94, 0.3)' : 'linear-gradient(135deg, #10b981, #059669)',
-                              border: '1px solid #10b981',
-                              boxShadow: 'none',
-                            }}
-                          >
-                            <CheckCircle2 size={13} /> Accept
-                          </button>
-                          <button
-                            onClick={() => handleStatusUpdate(adm.id, 'STUDENT', 'REJECTED', adm.admissionId)}
-                            disabled={updatingId === `STUDENT-${adm.id}`}
-                            className="btn-submit"
-                            style={{
-                              padding: '0.35rem 0.7rem',
-                              fontSize: '0.75rem',
-                              background: adm.status === 'REJECTED' ? 'rgba(239, 68, 68, 0.3)' : 'linear-gradient(135deg, #ef4444, #dc2626)',
-                              border: '1px solid #ef4444',
-                              boxShadow: 'none',
-                            }}
-                          >
-                            <XCircle size={13} /> Reject
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
-                      {loading ? 'Loading student admissions...' : 'No student admission records found.'}
+        <div className="table-wrapper">
+          <table className="portal-table">
+            <thead>
+              <tr>
+                <th>Admission ID</th>
+                <th>Student Name</th>
+                <th>Class</th>
+                <th>Section</th>
+                <th>Parent Name</th>
+                <th>Parent Email</th>
+                <th>Status</th>
+                <th>Review Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredStudents.length > 0 ? (
+                filteredStudents.map((adm) => (
+                  <tr key={adm.id || adm.admissionId}>
+                    <td>
+                      <span className="badge-unique">
+                        {adm.admissionId}
+                      </span>
+                    </td>
+                    <td><strong>{adm.firstName} {adm.lastName}</strong></td>
+                    <td>Class {adm.className}</td>
+                    <td>Section {adm.section || 'A'}</td>
+                    <td>{adm.parentName}</td>
+                    <td style={{ color: 'var(--color-slate)' }}>{adm.parentEmail}</td>
+                    <td>{getStatusBadge(adm.status)}</td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button
+                          onClick={() => handleStatusUpdate(adm.id, 'STUDENT', 'ACCEPTED', adm.admissionId)}
+                          disabled={updatingId === `STUDENT-${adm.id}`}
+                          className="btn-pricing-blue"
+                          style={{ padding: '4px 10px', fontSize: '11px' }}
+                        >
+                          <CheckCircle2 size={11} /> Accept
+                        </button>
+                        <button
+                          onClick={() => handleStatusUpdate(adm.id, 'STUDENT', 'REJECTED', adm.admissionId)}
+                          disabled={updatingId === `STUDENT-${adm.id}`}
+                          className="btn-outlined-explore"
+                          style={{ padding: '4px 10px', fontSize: '11px', color: 'var(--color-error)' }}
+                        >
+                          <XCircle size={11} /> Reject
+                        </button>
+                      </div>
                     </td>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '32px', color: 'var(--color-slate)' }}>
+                    {loading ? 'Loading admissions...' : 'No student records matching query.'}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       )}
 
       {/* VIEW 2: PARENT ADMISSIONS TABLE */}
       {activeSubTab === 'PARENT' && (
-        <div className="history-section" style={{ marginTop: 0 }}>
-          <h3 className="history-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <UserCheck size={16} color="#f472b6" />
-            <span>Parent Admissions Table (Pending listed first)</span>
-          </h3>
-          <div className="table-wrapper">
-            <table className="portal-table">
-              <thead>
-                <tr>
-                  <th>Admission ID</th>
-                  <th>Parent Name</th>
-                  <th>Child Name</th>
-                  <th>Class</th>
-                  <th>Section</th>
-                  <th>Parent Email</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredParents.length > 0 ? (
-                  filteredParents.map((adm) => (
-                    <tr key={adm.id || adm.admissionId} style={{ background: (adm.status || 'PENDING').toUpperCase() === 'PENDING' ? 'rgba(234, 179, 8, 0.04)' : 'transparent' }}>
-                      <td>
-                        <span className="badge-unique admission">
-                          {adm.admissionId}
-                        </span>
-                      </td>
-                      <td>{adm.parentName || `${adm.firstName} ${adm.lastName}`}</td>
-                      <td><strong>{adm.childName}</strong></td>
-                      <td><span className="class-pill">Class {adm.className}</span></td>
-                      <td><span className="role-pill staff" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.4)' }}>Section {adm.section || 'A'}</span></td>
-                      <td className="text-muted">{adm.parentEmail}</td>
-                      <td>{getStatusBadge(adm.status)}</td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '0.4rem' }}>
-                          <button
-                            onClick={() => handleStatusUpdate(adm.id, 'PARENT', 'ACCEPTED', adm.admissionId)}
-                            disabled={updatingId === `PARENT-${adm.id}`}
-                            className="btn-submit"
-                            style={{
-                              padding: '0.35rem 0.7rem',
-                              fontSize: '0.75rem',
-                              background: adm.status === 'ACCEPTED' ? 'rgba(34, 197, 94, 0.3)' : 'linear-gradient(135deg, #10b981, #059669)',
-                              border: '1px solid #10b981',
-                              boxShadow: 'none',
-                            }}
-                          >
-                            <CheckCircle2 size={13} /> Accept
-                          </button>
-                          <button
-                            onClick={() => handleStatusUpdate(adm.id, 'PARENT', 'REJECTED', adm.admissionId)}
-                            disabled={updatingId === `PARENT-${adm.id}`}
-                            className="btn-submit"
-                            style={{
-                              padding: '0.35rem 0.7rem',
-                              fontSize: '0.75rem',
-                              background: adm.status === 'REJECTED' ? 'rgba(239, 68, 68, 0.3)' : 'linear-gradient(135deg, #ef4444, #dc2626)',
-                              border: '1px solid #ef4444',
-                              boxShadow: 'none',
-                            }}
-                          >
-                            <XCircle size={13} /> Reject
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
-                      {loading ? 'Loading parent admissions...' : 'No parent admission records found.'}
+        <div className="table-wrapper">
+          <table className="portal-table">
+            <thead>
+              <tr>
+                <th>Admission ID</th>
+                <th>Parent Name</th>
+                <th>Child Name</th>
+                <th>Class</th>
+                <th>Section</th>
+                <th>Parent Email</th>
+                <th>Status</th>
+                <th>Review Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredParents.length > 0 ? (
+                filteredParents.map((adm) => (
+                  <tr key={adm.id || adm.admissionId}>
+                    <td>
+                      <span className="badge-unique">
+                        {adm.admissionId}
+                      </span>
+                    </td>
+                    <td>{adm.parentName || `${adm.firstName} ${adm.lastName}`}</td>
+                    <td><strong>{adm.childName}</strong></td>
+                    <td>Class {adm.className}</td>
+                    <td>Section {adm.section || 'A'}</td>
+                    <td style={{ color: 'var(--color-slate)' }}>{adm.parentEmail}</td>
+                    <td>{getStatusBadge(adm.status)}</td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button
+                          onClick={() => handleStatusUpdate(adm.id, 'PARENT', 'ACCEPTED', adm.admissionId)}
+                          disabled={updatingId === `PARENT-${adm.id}`}
+                          className="btn-pricing-blue"
+                          style={{ padding: '4px 10px', fontSize: '11px' }}
+                        >
+                          <CheckCircle2 size={11} /> Accept
+                        </button>
+                        <button
+                          onClick={() => handleStatusUpdate(adm.id, 'PARENT', 'REJECTED', adm.admissionId)}
+                          disabled={updatingId === `PARENT-${adm.id}`}
+                          className="btn-outlined-explore"
+                          style={{ padding: '4px 10px', fontSize: '11px', color: 'var(--color-error)' }}
+                        >
+                          <XCircle size={11} /> Reject
+                        </button>
+                      </div>
                     </td>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '32px', color: 'var(--color-slate)' }}>
+                    {loading ? 'Loading admissions...' : 'No parent admission records matching query.'}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

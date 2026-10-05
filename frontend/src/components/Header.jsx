@@ -1,48 +1,40 @@
 import React from 'react';
-import { GraduationCap, FileText, UserPlus, LogOut } from 'lucide-react';
+import { Layers, UserPlus, LogOut } from 'lucide-react';
 
 export default function Header({ currentTab, setCurrentTab, user, onLogout }) {
   return (
-    <header className="app-header">
-      <div className="brand-container">
-        <div className="brand-logo">
-          <GraduationCap size={26} />
-        </div>
-        <div>
-          <div className="brand-title-row">
-            <h1 className="brand-title">Smart Attendance Management</h1>
-          </div>
-          <p className="brand-subtitle">
-            Smart Attendance Management Portal
-          </p>
-        </div>
+    <header className="product-local-nav">
+      <div className="product-nav-title" onClick={() => setCurrentTab('signin')} style={{ cursor: 'pointer' }}>
+        <Layers size={20} color="var(--color-ink)" />
+        <span>Campus ERP — Enterprise Resource Planner</span>
       </div>
 
-      <div className="header-actions">
-
-        <button className="btn-admission" onClick={() => alert('Admission form is available for registered students.')}>
-          <FileText size={16} />
-          Admission Form
+      <div className="product-nav-controls">
+        <button 
+          className="btn-outlined-explore" 
+          onClick={() => alert('Admission & Enrollment portal is active for registered students and parents.')}
+        >
+          Admissions
         </button>
 
         {user ? (
-          <button className="btn-signin" onClick={onLogout}>
-            <LogOut size={16} style={{ display: 'inline', marginRight: '6px' }} />
+          <button className="btn-pricing-blue" onClick={onLogout}>
+            <LogOut size={13} />
             Sign Out
           </button>
         ) : (
           <>
             <button
-              className={`btn-signin ${currentTab === 'signin' ? 'active' : ''}`}
+              className={`btn-outlined-explore ${currentTab === 'signin' ? 'active' : ''}`}
               onClick={() => setCurrentTab('signin')}
             >
               Sign In
             </button>
             <button
-              className="btn-register"
+              className="btn-pricing-blue"
               onClick={() => setCurrentTab('register')}
             >
-              <UserPlus size={16} />
+              <UserPlus size={13} />
               Register
             </button>
           </>

@@ -30,7 +30,6 @@ export default function ParentAdmissionModule({ user }) {
       }
       if (res && res.ok) {
         const data = await res.json();
-        // Filter admissions submitted by this parent email or registered name
         const parentAdmissions = data.filter(
           (a) =>
             a.parentEmail?.toLowerCase() === user?.email?.toLowerCase() ||
@@ -38,7 +37,6 @@ export default function ParentAdmissionModule({ user }) {
              a.lastName?.toLowerCase() === user?.lastName?.toLowerCase())
         );
 
-        // Deduplicate by admissionId
         const uniqueMap = new Map();
         parentAdmissions.forEach((item) => {
           if (!uniqueMap.has(item.admissionId)) {
@@ -114,7 +112,6 @@ export default function ParentAdmissionModule({ user }) {
         } else if (errorData.error) {
           setError(errorData.error);
         } else {
-          // Client fallback if service is offline
           const mockAdmissionId = 'ADM-' + Math.floor(10000 + Math.random() * 90000);
           const mockResponse = {
             id: Date.now(),
@@ -145,161 +142,144 @@ export default function ParentAdmissionModule({ user }) {
     const s = (status || 'PENDING').toUpperCase();
     if (s === 'ACCEPTED') {
       return (
-        <span className="role-pill teacher" style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', borderColor: 'rgba(34, 197, 94, 0.4)', fontSize: '0.75rem', padding: '0.2rem 0.6rem' }}>
+        <span className="role-pill student">
           ✓ Accepted
         </span>
       );
     }
     if (s === 'REJECTED') {
       return (
-        <span className="role-pill admin" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', borderColor: 'rgba(239, 68, 68, 0.4)', fontSize: '0.75rem', padding: '0.2rem 0.6rem' }}>
-          ✗ Rejected
+        <span className="role-pill admin">
+          ✕ Rejected
         </span>
       );
     }
     return (
-      <span className="role-pill staff" style={{ background: 'rgba(234, 179, 8, 0.15)', color: '#fde047', borderColor: 'rgba(234, 179, 8, 0.4)', fontSize: '0.75rem', padding: '0.2rem 0.6rem' }}>
-        • Pending Decision
+      <span className="role-pill parent">
+        • Pending Review
       </span>
     );
   };
 
   return (
     <div className="module-card">
-      <div className="module-header">
-        <div className="module-icon-badge admission">
-          <FileText size={22} color="#a855f7" />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+        <div className="card-header-icon" style={{ margin: 0 }}>
+          <FileText size={22} color="var(--color-ink)" />
         </div>
         <div>
-          <h2 className="module-title">Parent Admission Form Module</h2>
-          <p className="module-subtitle">
-            Submit admission application for your children (Limit: <strong>1 admission per child</strong>, parents can apply for multiple children)
+          <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--color-ink)' }}>Parent Admission Portal</h2>
+          <p style={{ fontSize: '14px', color: 'var(--color-slate)' }}>
+            Submit enrollment applications for your children (1 active admission per child)
           </p>
         </div>
       </div>
 
       {successData && (
-        <div className="alert-success-box" style={{ padding: '0.85rem 1.25rem', marginBottom: '1.25rem' }}>
-          <div className="alert-success-header" style={{ marginBottom: 0 }}>
-            <CheckCircle2 size={18} color="#34d399" />
-            <span style={{ fontWeight: '700', fontSize: '0.95rem', color: '#6ee7b7' }}>
-              Submitted (Child: <strong>{successData.childName}</strong> | Admission ID: <strong>{successData.admissionId}</strong>)
-            </span>
-          </div>
+        <div className="alert-banner success">
+          <CheckCircle2 size={16} />
+          <span>Application for <strong>{successData.childName}</strong> submitted successfully (ID: <strong>{successData.admissionId}</strong>)</span>
         </div>
       )}
 
       {error && (
-        <div className="alert-error-box">
-          {error}
+        <div className="alert-banner error">
+          <span>{error}</span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="portal-form">
-        <div className="form-grid-3">
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '32px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
           <div className="form-group">
-            <label className="form-label">
-              <User size={14} /> Parent First Name
-            </label>
+            <label className="form-label">Parent First Name</label>
             <input
               type="text"
               name="firstName"
               value={formData.firstName}
               disabled
-              className="form-input disabled-input"
+              className="form-input no-icon"
+              style={{ backgroundColor: 'var(--color-studio-mist)' }}
             />
           </div>
 
           <div className="form-group">
-            <label className="form-label">
-              <User size={14} /> Parent Last Name
-            </label>
+            <label className="form-label">Parent Last Name</label>
             <input
               type="text"
               name="lastName"
               value={formData.lastName}
               disabled
-              className="form-input disabled-input"
+              className="form-input no-icon"
+              style={{ backgroundColor: 'var(--color-studio-mist)' }}
             />
           </div>
 
           <div className="form-group">
-            <label className="form-label">
-              <Mail size={14} /> Parent Email Address
-            </label>
+            <label className="form-label">Parent Email</label>
             <input
               type="email"
               name="parentEmail"
               value={formData.parentEmail}
               disabled
-              className="form-input disabled-input"
+              className="form-input no-icon"
+              style={{ backgroundColor: 'var(--color-studio-mist)' }}
             />
           </div>
         </div>
 
-        <div className="form-grid-2">
+        <div className="form-grid">
           <div className="form-group">
-            <label className="form-label">
-              <UserCheck size={14} /> Child Full Name
-            </label>
+            <label className="form-label">Child Full Name</label>
             <input
               type="text"
               name="childName"
-              placeholder="e.g. Timothy Morgan"
+              placeholder="e.g. Timothy Appleseed"
               value={formData.childName}
               onChange={handleChange}
               required
-              className="form-input"
+              className="form-input no-icon"
             />
           </div>
 
           <div className="form-group">
-            <label className="form-label">
-              <BookOpen size={14} /> Child Class / Grade
-            </label>
+            <label className="form-label">Child Grade / Class</label>
             <select
               name="className"
               value={formData.className}
               onChange={handleChange}
               required
-              className="form-input"
+              className="form-select"
             >
-              <option value="Grade 1">Grade 1</option>
-              <option value="Grade 2">Grade 2</option>
-              <option value="Grade 3">Grade 3</option>
-              <option value="Grade 4">Grade 4</option>
-              <option value="Grade 5">Grade 5</option>
-              <option value="Grade 6">Grade 6</option>
-              <option value="Grade 7">Grade 7</option>
-              <option value="Grade 8">Grade 8</option>
-              <option value="Grade 9">Grade 9</option>
-              <option value="Grade 10">Grade 10</option>
-              <option value="Grade 11">Grade 11</option>
-              <option value="Grade 12">Grade 12</option>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((cls) => (
+                <option key={cls} value={`Grade ${cls}`}>Grade {cls}</option>
+              ))}
             </select>
           </div>
         </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="btn-submit admission-btn"
-        >
-          {loading ? (
-            'Saving Admission to MySQL...'
-          ) : (
-            <>
-              <Send size={16} />
-              Submit Admission Application for Child
-            </>
-          )}
-        </button>
+        <div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn-pricing-blue"
+            style={{ width: 'auto', padding: '10px 24px', fontSize: '14px' }}
+          >
+            {loading ? (
+              'Submitting...'
+            ) : (
+              <>
+                <Send size={14} />
+                Submit Application for Child
+              </>
+            )}
+          </button>
+        </div>
       </form>
 
       {admissionsList.length > 0 && (
-        <div className="history-section">
-          <h3 className="history-title">
-            <Clock size={16} /> Parent Admissions History ({admissionsList.length})
+        <div style={{ borderTop: '1px solid var(--color-control-gray)', paddingTop: '24px' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Clock size={16} /> Submitted Children Applications ({admissionsList.length})
           </h3>
           <div className="table-wrapper">
             <table className="portal-table">
@@ -308,27 +288,27 @@ export default function ParentAdmissionModule({ user }) {
                   <th>Admission ID</th>
                   <th>Parent Name</th>
                   <th>Child Name</th>
-                  <th>Child Class</th>
+                  <th>Grade</th>
                   <th>Parent Email</th>
-                  <th>Decision Status</th>
-                  <th>Date Submitted</th>
+                  <th>Status</th>
+                  <th>Date</th>
                 </tr>
               </thead>
               <tbody>
                 {admissionsList.map((adm) => (
                   <tr key={adm.id || adm.admissionId}>
                     <td>
-                      <span className="badge-unique admission">
+                      <span className="badge-unique">
                         {adm.admissionId}
                       </span>
                     </td>
                     <td>{adm.parentName || `${adm.firstName} ${adm.lastName}`}</td>
                     <td><strong>{adm.childName}</strong></td>
-                    <td><span className="class-pill">{adm.className}</span></td>
-                    <td className="text-muted">{adm.parentEmail}</td>
+                    <td>{adm.className}</td>
+                    <td style={{ color: 'var(--color-slate)' }}>{adm.parentEmail}</td>
                     <td>{getStatusBadge(adm.status)}</td>
-                    <td className="text-muted">
-                      {adm.createdAt ? new Date(adm.createdAt).toLocaleDateString() : 'Just Now'}
+                    <td style={{ color: 'var(--color-slate)' }}>
+                      {adm.createdAt ? new Date(adm.createdAt).toLocaleDateString() : 'Today'}
                     </td>
                   </tr>
                 ))}

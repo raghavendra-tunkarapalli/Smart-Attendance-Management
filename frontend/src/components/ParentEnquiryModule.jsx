@@ -31,7 +31,6 @@ export default function ParentEnquiryModule({ user }) {
       }
       if (res && res.ok) {
         const data = await res.json();
-        // Filter strictly by user email or name for parent privacy & isolation
         const userEnquiries = data.filter(
           (e) =>
             (e.email && user?.email && e.email.toLowerCase() === user.email.toLowerCase()) ||
@@ -58,7 +57,7 @@ export default function ParentEnquiryModule({ user }) {
     const payload = {
       firstName: formData.firstName || user?.firstName || 'Parent',
       lastName: formData.lastName || user?.lastName || 'User',
-      email: formData.email || user?.email || 'parent@example.com',
+      email: formData.email || user?.email || 'parent@apple.com',
       childName: formData.childName,
       className: formData.className,
       enquire: formData.enquire,
@@ -104,159 +103,143 @@ export default function ParentEnquiryModule({ user }) {
 
   return (
     <div className="module-card">
-      <div className="module-header">
-        <div className="module-icon-badge parent-enquire">
-          <HelpCircle size={22} color="#ec4899" />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+        <div className="card-header-icon" style={{ margin: 0 }}>
+          <HelpCircle size={22} color="var(--color-ink)" />
         </div>
         <div>
-          <h2 className="module-title">Parent Enquiry Module</h2>
-          <p className="module-subtitle">
-            Powered by <code>parent-enquiry-service</code> (Parent inquiries submitted directly to school administration & teachers)
+          <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--color-ink)' }}>Parent Enquiry Desk</h2>
+          <p style={{ fontSize: '14px', color: 'var(--color-slate)' }}>
+            Parent inquiries regarding child progress, curriculum, bus routes, or fee schedules
           </p>
         </div>
       </div>
 
       {message && (
-        <div className="alert-box success">
-          <CheckCircle2 size={18} />
+        <div className="alert-banner success">
+          <CheckCircle2 size={16} />
           <span>{message}</span>
         </div>
       )}
 
       {error && (
-        <div className="alert-box error">
-          <AlertCircle size={18} />
+        <div className="alert-banner error">
+          <AlertCircle size={16} />
           <span>{error}</span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="portal-form">
-        <div className="form-grid-3">
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '32px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
           <div className="form-group">
-            <label className="form-label">
-              <User size={14} /> Parent First Name
-            </label>
+            <label className="form-label">Parent First Name</label>
             <input
               type="text"
               name="firstName"
               value={formData.firstName}
               disabled
-              className="form-input disabled-input"
+              className="form-input no-icon"
+              style={{ backgroundColor: 'var(--color-studio-mist)' }}
             />
           </div>
 
           <div className="form-group">
-            <label className="form-label">
-              <User size={14} /> Parent Last Name
-            </label>
+            <label className="form-label">Parent Last Name</label>
             <input
               type="text"
               name="lastName"
               value={formData.lastName}
               disabled
-              className="form-input disabled-input"
+              className="form-input no-icon"
+              style={{ backgroundColor: 'var(--color-studio-mist)' }}
             />
           </div>
 
           <div className="form-group">
-            <label className="form-label">
-              <Mail size={14} /> Parent Email Address
-            </label>
+            <label className="form-label">Parent Email Address</label>
             <input
               type="email"
               name="email"
               value={formData.email}
               disabled
-              className="form-input disabled-input"
+              className="form-input no-icon"
+              style={{ backgroundColor: 'var(--color-studio-mist)' }}
             />
           </div>
         </div>
 
-        <div className="form-grid-2">
+        <div className="form-grid">
           <div className="form-group">
-            <label className="form-label">
-              <UserCheck size={14} /> Child Full Name
-            </label>
+            <label className="form-label">Child Full Name</label>
             <input
               type="text"
               name="childName"
-              placeholder="e.g. Timothy Morgan"
+              placeholder="e.g. Timothy Appleseed"
               value={formData.childName}
               onChange={handleChange}
               required
-              className="form-input"
+              className="form-input no-icon"
             />
           </div>
 
           <div className="form-group">
-            <label className="form-label">
-              <BookOpen size={14} /> Child Grade / Class
-            </label>
+            <label className="form-label">Child Grade / Class</label>
             <select
               name="className"
               value={formData.className}
               onChange={handleChange}
               required
-              className="form-input"
+              className="form-select"
             >
-              <option value="Grade 1">Grade 1</option>
-              <option value="Grade 2">Grade 2</option>
-              <option value="Grade 3">Grade 3</option>
-              <option value="Grade 4">Grade 4</option>
-              <option value="Grade 5">Grade 5</option>
-              <option value="Grade 6">Grade 6</option>
-              <option value="Grade 7">Grade 7</option>
-              <option value="Grade 8">Grade 8</option>
-              <option value="Grade 9">Grade 9</option>
-              <option value="Grade 10">Grade 10</option>
-              <option value="Grade 11">Grade 11</option>
-              <option value="Grade 12">Grade 12</option>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((cls) => (
+                <option key={cls} value={`Grade ${cls}`}>Grade {cls}</option>
+              ))}
             </select>
           </div>
         </div>
 
         <div className="form-group">
-          <label className="form-label">
-            <MessageSquare size={14} /> Parent Enquiry Message
-          </label>
+          <label className="form-label">Enquiry Message</label>
           <textarea
             name="enquire"
             placeholder="Type your questions or concerns regarding admissions, fees, transport, or facilities..."
             value={formData.enquire}
             onChange={handleChange}
             required
-            className="form-input form-textarea"
+            className="form-textarea"
             rows="3"
           ></textarea>
         </div>
 
-        <button type="submit" disabled={loading} className="btn-submit enquire-btn">
-          {loading ? (
-            'Submitting Parent Enquiry...'
-          ) : (
-            <>
-              <Send size={16} />
-              Submit Parent Enquiry
-            </>
-          )}
-        </button>
+        <div>
+          <button type="submit" disabled={loading} className="btn-pricing-blue" style={{ width: 'auto', padding: '10px 24px', fontSize: '14px' }}>
+            {loading ? (
+              'Submitting...'
+            ) : (
+              <>
+                <Send size={14} />
+                Submit Parent Enquiry
+              </>
+            )}
+          </button>
+        </div>
       </form>
 
       {enquiriesList.length > 0 && (
-        <div className="history-section">
-          <h3 className="history-title">
-            <Clock size={16} /> Parent Enquiries History & Official Responses ({enquiriesList.length})
+        <div style={{ borderTop: '1px solid var(--color-control-gray)', paddingTop: '24px' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Clock size={16} /> Parent Enquiries History ({enquiriesList.length})
           </h3>
           <div className="table-wrapper">
             <table className="portal-table">
               <thead>
                 <tr>
                   <th>Enquiry ID</th>
-                  <th>Child Name & Class</th>
+                  <th>Child & Grade</th>
                   <th>Status</th>
-                  <th>My Enquiry Question</th>
+                  <th>Query</th>
                   <th>Official Response</th>
-                  <th>Date Submitted</th>
+                  <th>Date</th>
                 </tr>
               </thead>
               <tbody>
@@ -266,37 +249,37 @@ export default function ParentEnquiryModule({ user }) {
                   return (
                     <tr key={enq.id || enq.enquireId}>
                       <td>
-                        <span className="badge-unique enquire">
+                        <span className="badge-unique">
                           {enq.enquireId}
                         </span>
                       </td>
-                      <td><strong>{enq.childName}</strong> <span className="class-pill">{enq.className}</span></td>
+                      <td><strong>{enq.childName}</strong> • {enq.className}</td>
                       <td>
                         {isResponded ? (
-                          <span className="role-pill teacher" style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', borderColor: 'rgba(34, 197, 94, 0.4)', fontSize: '0.75rem', padding: '0.2rem 0.6rem' }}>
+                          <span className="role-pill student">
                             ✓ Responded
                           </span>
                         ) : (
-                          <span className="role-pill admin" style={{ background: 'rgba(236, 72, 153, 0.15)', color: '#f472b6', borderColor: 'rgba(236, 72, 153, 0.4)', fontSize: '0.75rem', padding: '0.2rem 0.6rem' }}>
-                            • Pending Response
+                          <span className="role-pill parent">
+                            • In Review
                           </span>
                         )}
                       </td>
-                      <td style={{ maxWidth: '240px', whiteSpace: 'normal', wordBreak: 'break-word' }}>{enq.enquire}</td>
-                      <td style={{ minWidth: '280px', maxWidth: '360px', whiteSpace: 'normal' }}>
+                      <td style={{ maxWidth: '240px', whiteSpace: 'normal' }}>{enq.enquire}</td>
+                      <td style={{ minWidth: '240px', maxWidth: '340px', whiteSpace: 'normal' }}>
                         {officialResp ? (
-                          <div style={{ background: 'rgba(236, 72, 153, 0.12)', border: '1px solid rgba(236, 72, 153, 0.3)', borderRadius: '8px', padding: '0.5rem 0.75rem', color: '#fbcfe8', fontSize: '0.85rem' }}>
-                            <strong style={{ color: '#f472b6', display: 'block', fontSize: '0.75rem' }}>💬 Official Response:</strong>
+                          <div style={{ backgroundColor: 'var(--color-studio-mist)', border: '1px solid var(--color-control-gray)', borderRadius: '10px', padding: '8px 12px', fontSize: '13px', color: 'var(--color-ink)' }}>
+                            <strong style={{ color: 'var(--color-apple-blue)', display: 'block', fontSize: '11px', textTransform: 'uppercase', marginBottom: '2px' }}>Response</strong>
                             {officialResp}
                           </div>
                         ) : (
-                          <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '0.8rem' }}>
-                            • Awaiting Response...
+                          <span style={{ color: 'var(--color-slate)', fontStyle: 'italic', fontSize: '13px' }}>
+                            • Pending reply
                           </span>
                         )}
                       </td>
-                      <td className="text-muted">
-                        {enq.createdAt ? new Date(enq.createdAt).toLocaleDateString() : 'Just Now'}
+                      <td style={{ color: 'var(--color-slate)' }}>
+                        {enq.createdAt ? new Date(enq.createdAt).toLocaleDateString() : 'Today'}
                       </td>
                     </tr>
                   );

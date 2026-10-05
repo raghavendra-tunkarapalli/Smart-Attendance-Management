@@ -64,14 +64,14 @@ foreach ($service in $services) {
 Write-Host "Starting frontend (Vite)..." -ForegroundColor Yellow
 $frontendLogOut = Join-Path $LogDir "frontend-out.log"
 $frontendLogErr = Join-Path $LogDir "frontend-err.log"
-Start-Process -FilePath "npm.cmd" -ArgumentList "run dev" -WorkingDirectory (Join-Path $PSScriptRoot "frontend") -NoNewWindow -RedirectStandardOutput $frontendLogOut -RedirectStandardError $frontendLogErr
+Start-Process -FilePath "npm.cmd" -ArgumentList "run", "dev" -WorkingDirectory (Join-Path $PSScriptRoot "frontend") -NoNewWindow -RedirectStandardOutput $frontendLogOut -RedirectStandardError $frontendLogErr
 
 Write-Host "All services started! Check the 'logs' folder for logs." -ForegroundColor Green
 Write-Host "Eureka Dashboard: http://localhost:8761" -ForegroundColor Green
 Write-Host "API Gateway: http://localhost:8099" -ForegroundColor Green
 Write-Host "Frontend: http://localhost:5173" -ForegroundColor Green
-
-Write-Host "Keeping launcher process alive to support background services. Use stop_all.ps1 to terminate." -ForegroundColor Cyan
+Write-Host "Services are running. Launcher will remain active in background." -ForegroundColor Cyan
 while ($true) {
     Start-Sleep -Seconds 3600
 }
+
