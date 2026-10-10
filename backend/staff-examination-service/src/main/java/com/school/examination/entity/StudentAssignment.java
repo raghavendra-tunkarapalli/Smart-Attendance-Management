@@ -34,7 +34,7 @@ public class StudentAssignment {
     @Column(name = "results_released", nullable = false)
     private Boolean resultsReleased = false;
 
-    @OneToMany(mappedBy = "assignment", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "assignment", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<AssignmentQuestion> questions = new ArrayList<>();
 
     public StudentAssignment() {

@@ -11,7 +11,11 @@ import java.util.Optional;
 @Repository
 public interface StudentAttendanceRepository extends JpaRepository<StudentAttendance, Long> {
     List<StudentAttendance> findByClassStandardAndSectionNameAndAttendanceDate(Integer classStandard, String sectionName, LocalDate date);
+    List<StudentAttendance> findByClassStandardAndSectionNameAndAttendanceDateAndPeriodIndex(Integer classStandard, String sectionName, LocalDate date, Integer periodIndex);
     Optional<StudentAttendance> findByStudentIdAndAttendanceDate(String studentId, LocalDate date);
+    Optional<StudentAttendance> findByStudentIdAndAttendanceDateAndPeriodIndex(String studentId, LocalDate date, Integer periodIndex);
+    List<StudentAttendance> findByStudentIdOrderByAttendanceDateDesc(String studentId);
+    List<StudentAttendance> findByStudentIdAndAttendanceDateOrderByPeriodIndexAsc(String studentId, LocalDate date);
     List<StudentAttendance> findByClassStandardAndSectionNameAndAttendanceDateBetween(Integer classStandard, String sectionName, LocalDate start, LocalDate end);
     List<StudentAttendance> findByStudentIdAndAttendanceDateBetween(String studentId, LocalDate start, LocalDate end);
 }

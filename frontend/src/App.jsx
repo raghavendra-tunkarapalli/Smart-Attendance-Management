@@ -202,7 +202,7 @@ export default function App() {
 
       {/* Authenticated Dashboard View */}
       {user && token ? (
-        <main className="main-content" style={{ flex: 1, padding: 'var(--spacing-20) var(--spacing-16)' }}>
+        <main className="main-content">
           <Dashboard user={user} token={token} onLogout={handleLogout} />
         </main>
       ) : (
@@ -212,8 +212,8 @@ export default function App() {
           {/* 1. HERO SECTION: Dynamic Dual-Column Presentation & Authentication */}
           <section
             style={{
-              padding: 'var(--spacing-64) var(--spacing-24) var(--spacing-64)',
-              maxWidth: '1240px',
+              padding: 'var(--spacing-48) clamp(20px, 4vw, 48px)',
+              maxWidth: '1600px',
               margin: '0 auto',
               width: '100%',
               boxSizing: 'border-box'
@@ -489,12 +489,12 @@ export default function App() {
             id="roles"
             style={{
               backgroundColor: 'var(--color-studio-mist)',
-              padding: 'var(--spacing-64) var(--spacing-24)',
+              padding: 'var(--spacing-64) clamp(20px, 4vw, 48px)',
               width: '100%',
               boxSizing: 'border-box'
             }}
           >
-            <div style={{ maxWidth: '1240px', margin: '0 auto' }}>
+            <div style={{ maxWidth: '1600px', margin: '0 auto', width: '100%' }}>
               <div style={{ marginBottom: 'var(--spacing-40)', textAlign: 'center' }}>
                 <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--color-pricing-blue)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
                   Role Ecosystem
@@ -672,7 +672,7 @@ export default function App() {
                     <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'var(--color-studio-mist)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
                       <Shield size={22} color="var(--color-pricing-blue)" />
                     </div>
-                    <h3 style={{ fontSize: '20px', fontWeight: '600', color: 'var(--color-ink)', margin: '0 0 8px 0' }}>
+                    <h3 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--color-ink)', margin: '0 0 8px 0' }}>
                       Administration
                     </h3>
                     <p style={{ fontSize: '14px', color: 'var(--color-slate)', lineHeight: '1.4', margin: 0 }}>
@@ -695,8 +695,8 @@ export default function App() {
           {/* 3. ARCHITECTURAL PILLARS SECTION (Gallery White #ffffff) */}
           <section
             style={{
-              padding: 'var(--spacing-64) var(--spacing-24)',
-              maxWidth: '1240px',
+              padding: 'var(--spacing-64) clamp(20px, 4vw, 48px)',
+              maxWidth: '1600px',
               margin: '0 auto',
               width: '100%',
               boxSizing: 'border-box'
@@ -757,14 +757,16 @@ export default function App() {
           <footer
             style={{
               borderTop: '1px solid var(--color-control-gray)',
-              padding: 'var(--spacing-24) var(--spacing-20)',
+              padding: 'var(--spacing-24) clamp(20px, 4vw, 48px)',
               textAlign: 'center',
               fontSize: '12px',
               color: 'var(--color-slate)',
-              backgroundColor: 'var(--color-studio-mist)'
+              backgroundColor: 'var(--color-studio-mist)',
+              width: '100%',
+              boxSizing: 'border-box'
             }}
           >
-            <div style={{ maxWidth: '1240px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ maxWidth: '1600px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
               <span>Campus ERP — Enterprise Resource Planning System</span>
               <div style={{ display: 'flex', gap: '16px' }}>
                 <span onClick={() => { setError(null); setCurrentTab('signin'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ cursor: 'pointer', color: 'var(--color-apple-blue)' }}>Sign In</span>

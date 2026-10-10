@@ -19,7 +19,7 @@ public class StaffExaminationController {
         this.assignmentRepository = assignmentRepository;
     }
 
-    @PostMapping("/assignment/save")
+    @PostMapping(value = {"/assignment/save", "/assignments", "/assignment"})
     public ResponseEntity<?> saveAssignment(@RequestBody StudentAssignment assignment) {
         if (assignment.getAssignmentTitle() == null || assignment.getAssignmentTitle().trim().isEmpty()) {
             return ResponseEntity.badRequest().body("Assignment title cannot be empty");
@@ -38,6 +38,7 @@ public class StaffExaminationController {
         StudentAssignment saved = assignmentRepository.save(assignment);
         return ResponseEntity.ok(Map.of(
             "message", "Assignment saved successfully",
+            "id", saved.getId(),
             "assignmentId", saved.getId(),
             "questionsCount", saved.getQuestions() != null ? saved.getQuestions().size() : 0
         ));
@@ -45,12 +46,37 @@ public class StaffExaminationController {
 
     @GetMapping("/assignments")
     public ResponseEntity<List<StudentAssignment>> getAssignments(
-            @RequestParam Integer classStandard,
-            @RequestParam String sectionName) {
+            @RequestParam(required = false) Integer classStandard,
+            @RequestParam(required = false) String sectionName) {
         
-        List<StudentAssignment> list = assignmentRepository.findByClassStandardAndSectionNameOrderByCreatedAtDesc(
-                classStandard, sectionName.toUpperCase());
+        List<StudentAssignment> list;
+        if (classStandard != null && sectionName != null && !sectionName.trim().isEmpty() && !sectionName.equalsIgnoreCase("ALL")) {
+            list = assignmentRepository.findByClassStandardAndSectionNameOrderByCreatedAtDesc(
+                    classStandard, sectionName.toUpperCase());
+        } else if (classStandard != null) {
+            list = assignmentRepository.findByClassStandardOrderByCreatedAtDesc(classStandard);
+        } else {
+            list = assignmentRepository.findAllByOrderByCreatedAtDesc();
+        }
         return ResponseEntity.ok(list);
+    }
+
+    @GetMapping("/assignments/all")
+    public ResponseEntity<List<StudentAssignment>> getAllAssignments() {
+        return ResponseEntity.ok(assignmentRepository.findAllByOrderByCreatedAtDesc());
+    }
+
+    @GetMapping("/assignments/{id}")
+    public ResponseEntity<?> getAssignmentById(@PathVariable Long id) {
+        Optional<StudentAssignment> opt = assignmentRepository.findById(id);
+        if (opt.isPresent()) {
+            StudentAssignment assignment = opt.get();
+            if (assignment.getQuestions() != null) {
+                assignment.getQuestions().sort(Comparator.comparing(AssignmentQuestion::getQuestionNumber));
+            }
+            return ResponseEntity.ok(assignment);
+        }
+        return ResponseEntity.notFound().build();
     }
 
     @GetMapping("/assignments/{id}/questions")
@@ -65,7 +91,7 @@ public class StaffExaminationController {
         return ResponseEntity.notFound().build();
     }
 
-    @PutMapping("/assignments/{id}/release-results")
+    @RequestMapping(value = "/assignments/{id}/release-results", method = {RequestMethod.PUT, RequestMethod.POST})
     public ResponseEntity<?> releaseResults(@PathVariable Long id, @RequestParam Boolean released) {
         Optional<StudentAssignment> opt = assignmentRepository.findById(id);
         if (opt.isPresent()) {
@@ -77,6 +103,15 @@ public class StaffExaminationController {
                 "assignmentId", saved.getId(),
                 "resultsReleased", saved.getResultsReleased()
             ));
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    @RequestMapping(value = {"/assignments/{id}", "/assignments/{id}/delete"}, method = {RequestMethod.DELETE, RequestMethod.POST})
+    public ResponseEntity<?> deleteAssignment(@PathVariable Long id) {
+        if (assignmentRepository.existsById(id)) {
+            assignmentRepository.deleteById(id);
+            return ResponseEntity.ok(Map.of("message", "Assignment deleted successfully", "id", id));
         }
         return ResponseEntity.notFound().build();
     }

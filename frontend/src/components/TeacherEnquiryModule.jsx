@@ -270,10 +270,10 @@ export default function TeacherEnquiryModule() {
                           </span>
                         )}
                       </td>
-                      <td style={{ maxWidth: '240px', whiteSpace: 'normal' }}>
+                      <td style={{ minWidth: '220px', whiteSpace: 'normal', lineHeight: 1.45 }}>
                         {enq.enquire}
                       </td>
-                      <td style={{ minWidth: '340px', maxWidth: '440px', whiteSpace: 'normal' }}>
+                      <td style={{ minWidth: '320px', whiteSpace: 'normal' }}>
                         {hasResponse && !isEditing ? (
                           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', backgroundColor: 'var(--color-studio-mist)', border: '1px solid var(--color-control-gray)', borderRadius: '10px', padding: '8px 12px' }}>
                             <div style={{ fontSize: '13px', color: 'var(--color-ink)', lineHeight: 1.4 }}>
@@ -366,10 +366,10 @@ export default function TeacherEnquiryModule() {
                           </span>
                         )}
                       </td>
-                      <td style={{ maxWidth: '240px', whiteSpace: 'normal' }}>
+                      <td style={{ minWidth: '220px', whiteSpace: 'normal', lineHeight: 1.45 }}>
                         {enq.enquire}
                       </td>
-                      <td style={{ minWidth: '340px', maxWidth: '440px', whiteSpace: 'normal' }}>
+                      <td style={{ minWidth: '320px', whiteSpace: 'normal' }}>
                         {hasResponse && !isEditing ? (
                           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', backgroundColor: 'var(--color-studio-mist)', border: '1px solid var(--color-control-gray)', borderRadius: '10px', padding: '8px 12px' }}>
                             <div style={{ fontSize: '13px', color: 'var(--color-ink)', lineHeight: 1.4 }}>

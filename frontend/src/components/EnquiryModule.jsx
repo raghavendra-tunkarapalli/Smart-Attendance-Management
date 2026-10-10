@@ -265,8 +265,8 @@ export default function EnquiryModule({ user }) {
                           </span>
                         )}
                       </td>
-                      <td style={{ maxWidth: '240px', whiteSpace: 'normal' }}>{enq.enquire}</td>
-                      <td style={{ minWidth: '240px', maxWidth: '340px', whiteSpace: 'normal' }}>
+                      <td style={{ minWidth: '220px', whiteSpace: 'normal', lineHeight: 1.45 }}>{enq.enquire}</td>
+                      <td style={{ minWidth: '280px', whiteSpace: 'normal' }}>
                         {officialResp ? (
                           <div style={{ backgroundColor: 'var(--color-studio-mist)', border: '1px solid var(--color-control-gray)', borderRadius: '10px', padding: '8px 12px', fontSize: '13px', color: 'var(--color-ink)' }}>
                             <strong style={{ color: 'var(--color-apple-blue)', display: 'block', fontSize: '11px', textTransform: 'uppercase', marginBottom: '2px' }}>Response</strong>

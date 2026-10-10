@@ -25,8 +25,14 @@ import {
   Award,
   BookMarked,
   ShieldCheck,
-  AlertCircle
+  AlertCircle,
+  GripVertical,
+  Coffee,
+  User,
+  Layers,
+  Activity
 } from 'lucide-react';
+import StaffExaminationModule from './StaffExaminationModule';
 
 export default function StaffPortalModule({ user }) {
   const [activeTab, setActiveTab] = useState('module1');
@@ -35,6 +41,8 @@ export default function StaffPortalModule({ user }) {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [notification, setNotification] = useState(null);
+  const [dragOverCell, setDragOverCell] = useState(null);
+  const [trackerSelectedPeriod, setTrackerSelectedPeriod] = useState(0);
 
   // Module 2 State
   const [studentsList, setStudentsList] = useState([]);
@@ -100,6 +108,15 @@ export default function StaffPortalModule({ user }) {
 
   const [activeTeacherClick, setActiveTeacherClick] = useState(null);
   const [activeRoomClick, setActiveRoomClick] = useState(null);
+  const [boardActiveTab, setBoardActiveTab] = useState('teachers'); // 'teachers' | 'rooms'
+  const [availableRoomsList, setAvailableRoomsList] = useState(() => {
+    const list = [];
+    for (let i = 101; i <= 136; i++) {
+      list.push(`Room ${i}`);
+    }
+    list.push('Physics Lab', 'Chemistry Lab', 'Biology Lab', 'Computer Lab', 'Library', 'Seminar Hall');
+    return list;
+  });
 
   // Module 3: Students Directory states
   const [mod3Students, setMod3Students] = useState([]);
@@ -119,24 +136,6 @@ export default function StaffPortalModule({ user }) {
   const [detailModalMonth, setDetailModalMonth] = useState(() => new Date().getMonth() + 1);
   const [detailModalYear, setDetailModalYear] = useState(() => new Date().getFullYear());
 
-  // Module 4: Examinations states
-  const [mod4SelectedClass, setMod4SelectedClass] = useState(1);
-  const [mod4SelectedSection, setMod4SelectedSection] = useState('A');
-  const [mod4Assignments, setMod4Assignments] = useState([]);
-  const [mod4Loading, setMod4Loading] = useState(false);
-  const [mod4ViewMode, setMod4ViewMode] = useState('list'); // 'list' | 'create' | 'view'
-  const [mod4NewAssignmentTitle, setMod4NewAssignmentTitle] = useState('');
-  const [mod4NewAssignmentSubject, setMod4NewAssignmentSubject] = useState('');
-  const [mod4NewAssignmentConductDate, setMod4NewAssignmentConductDate] = useState('');
-  const [mod4SelectedAssignment, setMod4SelectedAssignment] = useState(null);
-  const [mod4SelectedAssignmentQuestions, setMod4SelectedAssignmentQuestions] = useState([]);
-  const [mod4NewQuestions, setMod4NewQuestions] = useState(() => {
-    const arr = [];
-    for (let i = 1; i <= 50; i++) {
-      arr.push({ questionNumber: i, questionText: '', optionA: '', optionB: '', optionC: '', optionD: '', correctOption: 'A' });
-    }
-    return arr;
-  });
 
   useEffect(() => {
     fetchTeachers();
@@ -427,118 +426,7 @@ export default function StaffPortalModule({ user }) {
     }
   }, [selectedStudentDetail, detailModalMonth, detailModalYear]);
 
-  const fetchMod4Assignments = async (cls, sec) => {
-    setMod4Loading(true);
-    try {
-      const url = `http://localhost:8099/api/staff-examination/assignments?classStandard=${cls}&sectionName=${sec}`;
-      let res = await fetch(url).catch(() => null);
-      if (!res || !res.ok) {
-        const fallbackUrl = `http://localhost:8096/api/staff-examination/assignments?classStandard=${cls}&sectionName=${sec}`;
-        res = await fetch(fallbackUrl).catch(() => null);
-      }
-      if (res && res.ok) {
-        const data = await res.json();
-        setMod4Assignments(data || []);
-      } else {
-        setMod4Assignments([]);
-      }
-    } catch (err) {
-      console.error('[Examinations] Failed to fetch assignments:', err);
-      setMod4Assignments([]);
-    } finally {
-      setMod4Loading(false);
-    }
-  };
 
-  const fetchMod4AssignmentQuestions = async (assignmentId) => {
-    try {
-      const url = `http://localhost:8099/api/staff-examination/assignments/${assignmentId}/questions`;
-      let res = await fetch(url).catch(() => null);
-      if (!res || !res.ok) {
-        res = await fetch(`http://localhost:8096/api/staff-examination/assignments/${assignmentId}/questions`).catch(() => null);
-      }
-      if (res && res.ok) {
-        const data = await res.json();
-        setMod4SelectedAssignmentQuestions(data || []);
-      }
-    } catch (err) {
-      console.error('Failed to fetch assignment questions:', err);
-    }
-  };
-
-  const saveMod4Assignment = async () => {
-    if (!mod4NewAssignmentTitle.trim()) {
-      showToast('Please enter an assignment title', 'error');
-      return;
-    }
-    if (!mod4NewAssignmentSubject.trim()) {
-      showToast('Please enter a subject name', 'error');
-      return;
-    }
-    if (!mod4NewAssignmentConductDate) {
-      showToast('Please select a conduct date and time', 'error');
-      return;
-    }
-
-    const filledQuestions = mod4NewQuestions.filter(q => q.questionText.trim() !== '');
-    if (filledQuestions.length === 0) {
-      showToast('Please fill in at least one MCQ question', 'error');
-      return;
-    }
-
-    const payload = {
-      assignmentTitle: mod4NewAssignmentTitle.trim(),
-      classStandard: mod4SelectedClass,
-      sectionName: mod4SelectedSection.toUpperCase(),
-      subject: mod4NewAssignmentSubject.trim(),
-      conductDate: mod4NewAssignmentConductDate,
-      questions: filledQuestions
-    };
-
-    try {
-      const url = `http://localhost:8099/api/staff-examination/assignment/save`;
-      let res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      }).catch(() => null);
-
-      if (!res || !res.ok) {
-        res = await fetch(`http://localhost:8096/api/staff-examination/assignment/save`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        }).catch(() => null);
-      }
-
-      if (res && res.ok) {
-        showToast('Assignment saved successfully in database!', 'success');
-        setMod4NewAssignmentTitle('');
-        setMod4NewAssignmentSubject('');
-        setMod4NewAssignmentConductDate('');
-        setMod4NewQuestions(() => {
-          const arr = [];
-          for (let i = 1; i <= 50; i++) {
-            arr.push({ questionNumber: i, questionText: '', optionA: '', optionB: '', optionC: '', optionD: '', correctOption: 'A' });
-          }
-          return arr;
-        });
-        setMod4ViewMode('list');
-        fetchMod4Assignments(mod4SelectedClass, mod4SelectedSection);
-      } else {
-        showToast('Failed to save assignment.', 'error');
-      }
-    } catch (err) {
-      console.error('Error saving assignment:', err);
-      showToast('Connection error saving assignment.', 'error');
-    }
-  };
-
-  useEffect(() => {
-    if (activeTab === 'module4') {
-      fetchMod4Assignments(mod4SelectedClass, mod4SelectedSection);
-    }
-  }, [activeTab, mod4SelectedClass, mod4SelectedSection]);
 
   const getTeacherAssignedCount = (teacherName) => {
     if (!selectedClass) return 0;
@@ -553,6 +441,47 @@ export default function StaffPortalModule({ user }) {
       }
     }
     return count;
+  };
+
+  const getRoomOccupancyInfo = (roomNum, periodIdx) => {
+    if (periodIdx === 3) {
+      return { isOccupied: false, isLunch: true, label: 'Lunch', color: '#a16207', bg: '#fefce8', border: '#fef08a' };
+    }
+    const roomName = `Room ${roomNum}`;
+    const roomNumStr = `${roomNum}`;
+
+    for (let c = 1; c <= 12; c++) {
+      for (let s = 1; s <= 3; s++) {
+        const cell = scheduleGrid[`${c}_${s}_${periodIdx}`];
+        if (cell && cell.room_no && cell.room_no.trim() !== '' && cell.room_no !== 'Recess') {
+          const rNorm = cell.room_no.trim().toLowerCase();
+          if (rNorm === roomName.toLowerCase() || rNorm === roomNumStr.toLowerCase()) {
+            const secLetter = s === 1 ? 'A' : s === 2 ? 'B' : 'C';
+            return {
+              isOccupied: true,
+              isLunch: false,
+              label: 'Filled',
+              detail: `C${c}-${secLetter}`,
+              teacher: cell.teacher && cell.teacher !== 'Unassigned' ? cell.teacher : null,
+              color: '#16a34a',
+              bg: '#f0fdf4',
+              border: '#bbf7d0',
+              assignedClass: c,
+              assignedSection: s
+            };
+          }
+        }
+      }
+    }
+    return {
+      isOccupied: false,
+      isLunch: false,
+      label: 'Vacant',
+      detail: null,
+      color: 'var(--color-steel)',
+      bg: 'var(--color-paper-frost)',
+      border: 'var(--color-hairline-silver)'
+    };
   };
 
   const getClassFaculty = () => {
@@ -594,6 +523,14 @@ export default function StaffPortalModule({ user }) {
 
   const handleDragStart = (e, teacherObj) => {
     e.dataTransfer.setData('application/json', JSON.stringify(teacherObj));
+    e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'TEACHER', name: teacherObj.name, subject: teacherObj.subject }));
+    e.dataTransfer.effectAllowed = 'copy';
+  };
+
+  const handleDragStartRoom = (e, roomName) => {
+    e.dataTransfer.setData('application/room-transfer', JSON.stringify({ roomNo: roomName }));
+    e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'ROOM', roomNo: roomName }));
+    e.dataTransfer.effectAllowed = 'copy';
   };
 
   const fetchClassRooms = async () => {
@@ -618,9 +555,7 @@ export default function StaffPortalModule({ user }) {
 
     const currentCellKey = selectedClass + '_' + sectionNum + '_' + colIdx;
     const currentAssignment = scheduleGrid[currentCellKey];
-
-    const classroomInfo = classRooms.find(r => r.classCode === `CLS_${selectedClass}_SEC_${sectionNum}`);
-    const targetRoom = currentAssignment?.room_no || classroomInfo?.roomNo || ('Room ' + (100 + (selectedClass - 1) * 3 + sectionNum));
+    const targetRoom = currentAssignment?.room_no || '';
 
     for (let c = 1; c <= 12; c++) {
       for (let s = 1; s <= 3; s++) {
@@ -635,7 +570,7 @@ export default function StaffPortalModule({ user }) {
           }
         }
         
-        if (otherAssignment && otherAssignment.room_no) {
+        if (targetRoom && targetRoom.trim() !== '' && otherAssignment && otherAssignment.room_no) {
           if (otherAssignment.room_no.toLowerCase() === targetRoom.toLowerCase()) {
             showToast(`Room Conflict: ${targetRoom} is already allocated to Class ${c} Section ${s} during ${PERIOD_TIMINGS[colIdx]}!`, 'error');
             return;
@@ -661,7 +596,6 @@ export default function StaffPortalModule({ user }) {
     }));
 
     saveScheduleToDB(selectedClass, sectionNum, colIdx, targetRoom, teacherObj.name, teacherObj.subject);
-
     showToast('Assigned ' + teacherObj.name + ' (' + teacherObj.subject + ') to Section ' + sectionNum + ' Period ' + PERIOD_TIMINGS[colIdx], 'success');
   };
 
@@ -674,7 +608,10 @@ export default function StaffPortalModule({ user }) {
     setActivePeriodTab(colIdx);
 
     const cellKey = selectedClass + '_' + sectionNum + '_' + colIdx;
-    const targetRoom = roomData.roomNo;
+    const targetRoom = typeof roomData === 'string' ? roomData : (roomData?.roomNo || roomData?.name || '');
+    if (!targetRoom || targetRoom.trim() === '') return;
+
+    const trimmedRoom = targetRoom.trim();
 
     for (let c = 1; c <= 12; c++) {
       for (let s = 1; s <= 3; s++) {
@@ -683,45 +620,45 @@ export default function StaffPortalModule({ user }) {
         const otherAssignment = scheduleGrid[otherCellKey];
         
         if (otherAssignment && otherAssignment.room_no) {
-          if (otherAssignment.room_no.toLowerCase() === targetRoom.toLowerCase()) {
-            showToast(`Room Conflict: ${targetRoom} is already allocated to Class ${c} Section ${s} during ${PERIOD_TIMINGS[colIdx]}!`, 'error');
+          if (otherAssignment.room_no.toLowerCase() === trimmedRoom.toLowerCase()) {
+            showToast(`Room Conflict: ${trimmedRoom} is already allocated to Class ${c} Section ${s} during ${PERIOD_TIMINGS[colIdx]}!`, 'error');
             return;
           }
         }
       }
     }
 
+    const existing = scheduleGrid[cellKey];
     setScheduleGrid(prev => ({
       ...prev,
       [cellKey]: {
-        ...(prev[cellKey] || { teacher: 'Unassigned', sub: 'General' }),
-        room_no: targetRoom
+        ...(existing || { teacher: 'Unassigned', sub: 'General' }),
+        room_no: trimmedRoom
       }
     }));
 
-    const existing = scheduleGrid[cellKey];
     saveScheduleToDB(
       selectedClass, 
       sectionNum, 
       colIdx, 
-      targetRoom, 
+      trimmedRoom, 
       existing?.teacher || 'Unassigned', 
       existing?.sub || 'General'
     );
 
-    showToast(`Allocated ${targetRoom} to Section ${sectionNum} Period ${PERIOD_TIMINGS[colIdx]}`, 'success');
+    showToast(`Allocated ${trimmedRoom} to Class ${selectedClass} Section ${sectionNum} (Period ${PERIOD_TIMINGS[colIdx]})`, 'success');
   };
 
   const handleEditRoomNumber = (sectionNum, colIdx) => {
     if (!selectedClass) return;
     setActivePeriodTab(colIdx);
     const cellKey = selectedClass + '_' + sectionNum + '_' + colIdx;
-    const classroomInfo = classRooms.find(r => r.classCode === `CLS_${selectedClass}_SEC_${sectionNum}`);
-    const currentRoom = scheduleGrid[cellKey]?.room_no || classroomInfo?.roomNo || ('Room ' + (100 + (selectedClass - 1) * 3 + sectionNum));
-    const newRoom = prompt('Enter Room Number for Period:', currentRoom);
-    if (newRoom && newRoom.trim() !== '') {
-      const trimmedRoom = newRoom.trim();
-      
+    const currentRoom = scheduleGrid[cellKey]?.room_no || '';
+    const newRoom = prompt('Enter Room Number (e.g. Room 101 or 101):', currentRoom || `Room ${100 + (selectedClass - 1) * 3 + sectionNum}`);
+    if (newRoom === null) return; // Cancelled
+    const trimmedRoom = newRoom.trim();
+
+    if (trimmedRoom !== '') {
       for (let c = 1; c <= 12; c++) {
         for (let s = 1; s <= 3; s++) {
           if (c === selectedClass && s === sectionNum) continue;
@@ -736,25 +673,54 @@ export default function StaffPortalModule({ user }) {
           }
         }
       }
+    }
 
+    const existing = scheduleGrid[cellKey];
+    setScheduleGrid(prev => ({
+      ...prev,
+      [cellKey]: {
+        ...(existing || { teacher: 'Unassigned', sub: 'General' }),
+        room_no: trimmedRoom
+      }
+    }));
+    saveScheduleToDB(
+      selectedClass, 
+      sectionNum, 
+      colIdx, 
+      trimmedRoom, 
+      existing?.teacher || 'Unassigned', 
+      existing?.sub || 'General'
+    );
+    if (trimmedRoom) {
+      showToast(`Room set to ${trimmedRoom}`, 'info');
+    } else {
+      showToast(`Room allocation cleared`, 'info');
+    }
+  };
+
+  const clearPeriodRoom = (sectionNum, colIdx) => {
+    if (!selectedClass) return;
+    const cellKey = selectedClass + '_' + sectionNum + '_' + colIdx;
+    const existing = scheduleGrid[cellKey];
+    if (!existing) return;
+
+    if (!existing.teacher || existing.teacher === 'Unassigned') {
+      setScheduleGrid(prev => ({
+        ...prev,
+        [cellKey]: null
+      }));
+      deleteScheduleFromDB(selectedClass, sectionNum, colIdx);
+    } else {
       setScheduleGrid(prev => ({
         ...prev,
         [cellKey]: {
-          ...(prev[cellKey] || { teacher: 'Unassigned', sub: 'General' }),
-          room_no: trimmedRoom
+          ...existing,
+          room_no: ''
         }
       }));
-
-      const existing = scheduleGrid[cellKey];
-      saveScheduleToDB(
-        selectedClass, 
-        sectionNum, 
-        colIdx, 
-        trimmedRoom, 
-        existing?.teacher || 'Unassigned', 
-        existing?.sub || 'General'
-      );
+      saveScheduleToDB(selectedClass, sectionNum, colIdx, '', existing.teacher, existing.sub);
     }
+    showToast('Room allocation removed.', 'info');
   };
 
   const clearPeriodUnit = (sectionNum, colIdx) => {
@@ -785,11 +751,46 @@ export default function StaffPortalModule({ user }) {
   };
 
   const modulesList = [
-    { id: 'module1', title: 'Schedule', subtitle: 'Class Timetable & Faculty Schedule', icon: <Calendar size={18} color="var(--color-pricing-blue)" />, desc: 'Overview of teacher directory, period allocation count & conflict-free schedule grid.' },
-    { id: 'module2', title: 'Student Directory', subtitle: 'All Students Data & Admissions', icon: <Users size={18} color="var(--color-ink)" />, desc: 'Student records: ID, Name, Parent Details, and Admission Status.' },
-    { id: 'module3', title: 'Student Details', subtitle: 'Monthly Attendance Logs', icon: <UserCheck size={18} color="var(--color-apple-blue)" />, desc: 'Browse student monthly attendance logs and calculate percentage.' },
-    { id: 'module4', title: 'Examinations', subtitle: 'Exams & MCQ Assignment Management', icon: <BookOpen size={18} color="var(--color-slate)" />, desc: 'Create, schedule, and view MCQ assignments for all 12 classes.' },
-    { id: 'module5', title: 'Administration', subtitle: 'Reports & Analytics', icon: <Clock size={18} color="var(--color-steel)" />, desc: 'Administrative reporting and school analytics.' }
+    {
+      id: 'module1',
+      title: 'Schedule',
+      tag: 'Timetable & Faculty',
+      icon: <Calendar size={18} />,
+      theme: { bg: '#eff6ff', color: '#2563eb', border: '#dbeafe' },
+      desc: 'Overview of teacher directory, period allocation count & conflict-free schedule grid.'
+    },
+    {
+      id: 'module2',
+      title: 'Student Directory',
+      tag: 'Roster & Admissions',
+      icon: <Users size={18} />,
+      theme: { bg: '#f5f3ff', color: '#7c3aed', border: '#ede9fe' },
+      desc: 'Student records: ID, Name, Parent Details, and Admission Status.'
+    },
+    {
+      id: 'module3',
+      title: 'Student Details',
+      tag: 'Monthly Attendance Logs',
+      icon: <UserCheck size={18} />,
+      theme: { bg: '#ecfdf5', color: '#059669', border: '#d1fae5' },
+      desc: 'Browse student monthly attendance logs and calculate percentage.'
+    },
+    {
+      id: 'module4',
+      title: 'Examinations',
+      tag: 'Exams & Question Bank',
+      icon: <BookOpen size={18} />,
+      theme: { bg: '#fff1f2', color: '#e11d48', border: '#ffe4e6' },
+      desc: 'Create, schedule, and view MCQ assignments for all 12 classes.'
+    },
+    {
+      id: 'module5',
+      title: 'Administration',
+      tag: 'Reports & Analytics',
+      icon: <ShieldCheck size={18} />,
+      theme: { bg: '#fffbeb', color: '#d97706', border: '#fef3c7' },
+      desc: 'Administrative reporting and school analytics.'
+    }
   ];
 
   const filteredTeachers = teachers.filter(t =>
@@ -888,54 +889,61 @@ export default function StaffPortalModule({ user }) {
       </div>
 
       {/* Main Staff Portal Layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '175px minmax(0, 1fr)', gap: 'var(--spacing-14)', alignItems: 'start', width: '100%' }}>
+      <div className="staff-portal-layout">
         
         {/* Left Module Sidebar Navigation */}
-        <div
-          style={{
-            background: 'var(--color-gallery-white)',
-            border: '1px solid var(--color-hairline-silver)',
-            borderRadius: 'var(--radius-cards)',
-            padding: 'var(--spacing-16)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '6px'
-          }}
-        >
-          <div style={{ fontSize: '11px', fontWeight: '600', color: 'var(--color-slate)', textTransform: 'uppercase', letterSpacing: '0.06em', paddingLeft: '6px', marginBottom: '8px' }}>
-            STAFF MODULES
+        <div className="staff-sidebar-nav">
+          <div className="staff-sidebar-header">
+            <div className="staff-sidebar-title">
+              <Layers size={15} color="var(--color-pricing-blue)" />
+              <span>Staff Modules</span>
+            </div>
+            <span className="badge-unique" style={{ fontSize: '11px', padding: '2px 8px' }}>
+              {modulesList.length} Modules
+            </span>
           </div>
 
-          {modulesList.map((mod) => {
-            const isActive = activeTab === mod.id;
-            return (
-              <button
-                key={mod.id}
-                onClick={() => setActiveTab(mod.id)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  width: '100%',
-                  padding: '9px 12px',
-                  borderRadius: '12px',
-                  background: isActive ? 'var(--color-studio-mist)' : 'transparent',
-                  border: isActive ? '1px solid var(--color-pricing-blue)' : '1px solid transparent',
-                  color: isActive ? 'var(--color-pricing-blue)' : 'var(--color-ink)',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {mod.icon}
-                  <span style={{ fontSize: '13px', fontWeight: isActive ? '600' : '400' }}>
-                    {mod.title}
-                  </span>
-                </div>
-                <ChevronRight size={13} style={{ opacity: isActive ? 1 : 0.3 }} />
-              </button>
-            );
-          })}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {modulesList.map((mod) => {
+              const isActive = activeTab === mod.id;
+              return (
+                <button
+                  key={mod.id}
+                  onClick={() => setActiveTab(mod.id)}
+                  className={`staff-module-btn ${isActive ? 'active' : ''}`}
+                >
+                  <div className="staff-module-left">
+                    <div
+                      className="staff-module-icon-box"
+                      style={{
+                        background: isActive ? mod.theme.bg : 'var(--color-studio-mist)',
+                        color: isActive ? mod.theme.color : 'var(--color-slate)',
+                        borderColor: isActive ? mod.theme.border : 'var(--color-control-gray)'
+                      }}
+                    >
+                      {mod.icon}
+                    </div>
+                    <div className="staff-module-text">
+                      <span className="staff-module-name">{mod.title}</span>
+                      <span className="staff-module-tag">{mod.tag}</span>
+                    </div>
+                  </div>
+                  <ChevronRight size={14} className="staff-module-arrow" />
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Sidebar Status Footer Widget */}
+          <div className="staff-sidebar-footer">
+            <div className="staff-sidebar-status-card">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-success)', display: 'inline-block', boxShadow: '0 0 0 2px rgba(22, 163, 74, 0.2)' }}></span>
+                <span style={{ fontSize: '11.5px', fontWeight: '600', color: 'var(--color-ink)' }}>Online Session</span>
+              </div>
+              <span style={{ fontSize: '10.5px', color: 'var(--color-slate)', fontWeight: '500' }}>ERP v2.4</span>
+            </div>
+          </div>
         </div>
 
         {/* Right Content Workspace */}
@@ -1018,295 +1026,971 @@ export default function StaffPortalModule({ user }) {
                   )}
                 </div>
 
-                {/* MODULE 1: TEACHER ALLOCATION TABLE + CLASS BOXES */}
+                {/* MODULE 1: CLASS SCHEDULER & PLANNING */}
                 {mod.id === 'module1' ? (
-                  <>
-                    <div style={{ display: 'grid', gridTemplateColumns: showClassSidebar ? '1fr 280px' : '1fr', gap: 'var(--spacing-14)', minWidth: 0 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-16)', width: '100%' }}>
+                    
+                    {/* ========================================================================= */}
+                    {/* TOP ROW: TEACHER DIRECTORY & WORKLOAD (LEFT) + CLASS STANDARDS (RIGHT)    */}
+                    {/* ========================================================================= */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 290px', gap: 'var(--spacing-16)', width: '100%', alignItems: 'stretch' }}>
                       
-                      {/* Left: Teacher Directory Table */}
-                      <div style={{ background: 'var(--color-gallery-white)', borderRadius: 'var(--radius-cards)', border: '1px solid var(--color-hairline-silver)', padding: 'var(--spacing-20)', minWidth: 0 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
-                          <h4 style={{ color: 'var(--color-ink)', fontSize: '14px', fontWeight: '600', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <Users size={15} color="var(--color-pricing-blue)" />
-                            <span>Teacher Directory & Workload</span>
-                          </h4>
-                          <span style={{ fontSize: '11px', background: 'var(--color-studio-mist)', color: 'var(--color-ink)', border: '1px solid var(--color-hairline-silver)', padding: '2px 8px', borderRadius: 'var(--radius-buttons)', fontWeight: '500' }}>
-                            {filteredTeachers.length} Active Faculty
-                          </span>
-                        </div>
+                      {/* 1. TEACHER DIRECTORY & WORKLOAD CARD */}
+                      <div style={{
+                        background: 'var(--color-gallery-white)',
+                        border: '1px solid var(--color-hairline-silver)',
+                        borderRadius: 'var(--radius-cards)',
+                        padding: 'var(--spacing-16) var(--spacing-20)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+                      }}>
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <Users size={16} color="var(--color-pricing-blue)" />
+                              <h4 style={{ color: 'var(--color-ink)', fontSize: '14px', fontWeight: '700', margin: 0 }}>
+                                Teacher Directory & Workload
+                              </h4>
+                            </div>
+                            <span style={{
+                              fontSize: '11px',
+                              background: 'var(--color-studio-mist)',
+                              color: 'var(--color-slate)',
+                              border: '1px solid var(--color-hairline-silver)',
+                              padding: '2px 8px',
+                              borderRadius: 'var(--radius-buttons)',
+                              fontWeight: '600'
+                            }}>
+                              {filteredTeachers.length} Active Faculty
+                            </span>
+                          </div>
 
-                        <div style={{ width: '100%', overflowX: 'auto' }}>
-                          <table style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--color-ink)', fontSize: '13px' }}>
-                            <thead>
-                              <tr style={{ background: 'var(--color-paper-frost)', borderBottom: '1px solid var(--color-hairline-silver)', textTransform: 'uppercase', fontSize: '11px', color: 'var(--color-slate)', letterSpacing: '0.04em' }}>
-                                <th style={{ padding: '9px 12px', textAlign: 'left' }}>Teacher Name</th>
-                                <th style={{ padding: '9px 12px', textAlign: 'left' }}>Subject</th>
-                                <th style={{ padding: '9px 12px', textAlign: 'center' }}>Periods Assigned</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {filteredTeachers.length > 0 ? (
-                                filteredTeachers.map((t, idx) => {
+                          <div style={{ overflowX: 'auto', maxHeight: '190px' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                              <thead>
+                                <tr style={{ borderBottom: '1px solid var(--color-control-gray)', textTransform: 'uppercase', fontSize: '10px', color: 'var(--color-slate)', fontWeight: '700', letterSpacing: '0.04em' }}>
+                                  <th style={{ padding: '6px 8px', textAlign: 'left' }}>TEACHER NAME</th>
+                                  <th style={{ padding: '6px 8px', textAlign: 'left' }}>SUBJECT</th>
+                                  <th style={{ padding: '6px 8px', textAlign: 'right' }}>PERIODS ASSIGNED</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {filteredTeachers.map((t, idx) => {
                                   const assignedCount = getTeacherAssignedCount(t.name);
                                   const isMax = assignedCount >= MAX_PERIODS_PER_TEACHER;
                                   const isSelected = activeTeacherClick?.id === t.id;
 
                                   return (
                                     <tr
-                                      key={t.id || t.userId || t.name}
+                                      key={t.id || idx}
                                       draggable={!isMax}
                                       onDragStart={(e) => handleDragStart(e, t)}
-                                      onClick={() => setActiveTeacherClick(isSelected ? null : t)}
-                                      style={{
-                                        cursor: isMax ? 'not-allowed' : 'grab',
-                                        background: isSelected ? 'var(--color-studio-mist)' : idx % 2 === 0 ? 'var(--color-gallery-white)' : 'var(--color-studio-mist)',
-                                        borderBottom: '1px solid var(--color-control-gray)'
+                                      onClick={() => {
+                                        setActiveRoomClick(null);
+                                        setActiveTeacherClick(isSelected ? null : t);
                                       }}
+                                      style={{
+                                        borderBottom: '1px solid var(--color-control-gray)',
+                                        background: isSelected ? '#eff6ff' : 'transparent',
+                                        cursor: isMax ? 'not-allowed' : 'grab',
+                                        transition: 'background 0.15s ease'
+                                      }}
+                                      title={isMax ? 'Maximum workload reached (7/7 periods)' : 'Drag teacher to timetable or click to assign'}
                                     >
-                                      <td style={{ padding: '9px 12px' }}>
-                                        <strong style={{ color: 'var(--color-ink)', fontSize: '13px' }}>{t.name}</strong>
+                                      <td style={{ padding: '7px 8px', fontWeight: '600', color: 'var(--color-ink)' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          <GripVertical size={12} color={isMax ? 'var(--color-steel)' : 'var(--color-slate)'} />
+                                          <span>{t.name}</span>
+                                        </div>
                                       </td>
-                                      <td style={{ padding: '9px 12px' }}>
-                                        <span style={{ background: 'var(--color-studio-mist)', color: 'var(--color-pricing-blue)', border: '1px solid var(--color-hairline-silver)', padding: '2px 8px', borderRadius: '8px', fontSize: '12px', fontWeight: '500' }}>
-                                          {t.subject}
+                                      <td style={{ padding: '7px 8px' }}>
+                                        <span style={{
+                                          background: '#eff6ff',
+                                          color: 'var(--color-pricing-blue)',
+                                          border: '1px solid #bfdbfe',
+                                          padding: '2px 8px',
+                                          borderRadius: '6px',
+                                          fontSize: '11px',
+                                          fontWeight: '500',
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '4px'
+                                        }}>
+                                          <BookOpen size={10} />
+                                          <span style={{ textTransform: 'capitalize' }}>{t.subject}</span>
                                         </span>
                                       </td>
-                                      <td style={{ padding: '9px 12px', textAlign: 'center' }}>
+                                      <td style={{ padding: '7px 8px', textAlign: 'right' }}>
                                         <span style={{
-                                          fontSize: '11px',
-                                          fontWeight: '600',
+                                          background: isMax ? 'var(--color-error-bg)' : 'var(--color-studio-mist)',
+                                          color: isMax ? 'var(--color-error)' : 'var(--color-slate)',
+                                          border: `1px solid ${isMax ? 'var(--color-error-border)' : 'var(--color-hairline-silver)'}`,
                                           padding: '2px 8px',
-                                          borderRadius: '8px',
-                                          background: isMax ? 'var(--color-studio-mist)' : 'var(--color-studio-mist)',
-                                          color: isMax ? 'var(--color-launch-orange)' : 'var(--color-ink)',
-                                          border: '1px solid var(--color-hairline-silver)'
+                                          borderRadius: '6px',
+                                          fontSize: '11px',
+                                          fontWeight: '600'
                                         }}>
-                                          {assignedCount} / {MAX_PERIODS_PER_TEACHER} {isMax ? '(FULL)' : 'Periods'}
+                                          {assignedCount}/7 Periods
                                         </span>
                                       </td>
                                     </tr>
                                   );
-                                })
-                              ) : (
-                                <tr>
-                                  <td colSpan="3" style={{ textAlign: 'center', padding: '20px', color: 'var(--color-slate)' }}>
-                                    No teacher records found in MySQL database table.
-                                  </td>
-                                </tr>
-                              )}
-                            </tbody>
-                          </table>
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
                       </div>
 
-                      {/* Right: 12 Class Boxes */}
-                      {showClassSidebar && (
-                        <div style={{ background: 'var(--color-gallery-white)', borderRadius: 'var(--radius-cards)', border: '1px solid var(--color-hairline-silver)', padding: 'var(--spacing-20)', minWidth: 0 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                            <h4 style={{ color: 'var(--color-ink)', fontSize: '14px', fontWeight: '600', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <Building size={15} color="var(--color-pricing-blue)" />
-                              <span>Class Standards (1 to 12)</span>
+                      {/* 2. CLASS STANDARDS (1 TO 12) CARD (Right Side) */}
+                      <div style={{
+                        background: 'var(--color-gallery-white)',
+                        border: '1px solid var(--color-hairline-silver)',
+                        borderRadius: 'var(--radius-cards)',
+                        padding: 'var(--spacing-16) var(--spacing-14)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Building size={15} color="var(--color-pricing-blue)" />
+                            <h4 style={{ color: 'var(--color-ink)', fontSize: '13px', fontWeight: '700', margin: 0 }}>
+                              Class Standards (1 to 12)
                             </h4>
-                            <span style={{ fontSize: '11px', color: 'var(--color-slate)' }}>12 Classes</span>
                           </div>
-
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => {
-                              const isSelected = selectedClass === num;
-                              return (
-                                <button
-                                  key={num}
-                                  onClick={() => setSelectedClass(num)}
-                                  style={{
-                                    background: isSelected ? 'var(--color-ink)' : 'var(--color-studio-mist)',
-                                    border: isSelected ? '1px solid var(--color-ink)' : '1px solid var(--color-control-gray)',
-                                    borderRadius: '12px',
-                                    padding: '9px 4px',
-                                    textAlign: 'center',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.15s ease'
-                                  }}
-                                >
-                                  <div style={{ fontSize: '10px', color: isSelected ? 'var(--color-steel)' : 'var(--color-slate)', fontWeight: '600', textTransform: 'uppercase' }}>Class</div>
-                                  <div style={{ fontSize: '15px', fontWeight: '600', color: isSelected ? 'var(--color-gallery-white)' : 'var(--color-ink)', marginTop: '2px' }}>{num}</div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Class Timetable Grid & Date Navigation */}
-                    {selectedClass && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-16)', marginTop: '4px', width: '100%' }}>
-                        
-                        {/* Timetable Header Card */}
-                        <div
-                          style={{
-                            background: 'var(--color-gallery-white)',
-                            border: '1px solid var(--color-hairline-silver)',
-                            borderRadius: 'var(--radius-cards)',
-                            padding: 'var(--spacing-16) var(--spacing-20)',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            flexWrap: 'wrap',
-                            gap: 'var(--spacing-12)'
-                          }}
-                        >
-                          <div>
-                            <h4 style={{ color: 'var(--color-ink)', fontSize: '17px', fontWeight: '600', margin: 0 }}>
-                              Class {selectedClass} Timetable Schedule
-                            </h4>
-                            <p style={{ color: 'var(--color-slate)', fontSize: '12px', margin: '3px 0 0 0' }}>
-                              Date: <strong style={{ color: 'var(--color-ink)' }}>{getFormattedDateWithDay(selectedDate)}</strong>
-                            </p>
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-studio-mist)', padding: '4px 10px', borderRadius: 'var(--radius-inputs)', border: '1px solid var(--color-steel)' }}>
-                              <input
-                                type="date"
-                                value={selectedDate}
-                                onChange={(e) => setSelectedDate(e.target.value)}
-                                style={{ background: 'transparent', color: 'var(--color-ink)', border: 'none', fontSize: '12px', fontWeight: '500', outline: 'none' }}
-                              />
-                            </div>
-                            
-                            <button onClick={handleNavigateYesterday} className="btn-apple-outline" style={{ padding: '5px 12px', fontSize: '12px' }}>
-                              ‹ Yesterday
-                            </button>
-                            <button onClick={handleNavigateToday} className="btn-apple-outline" style={{ padding: '5px 12px', fontSize: '12px', borderColor: 'var(--color-pricing-blue)', color: 'var(--color-pricing-blue)' }}>
-                              Today
-                            </button>
-                            <button onClick={handleNavigateTomorrow} className="btn-apple-outline" style={{ padding: '5px 12px', fontSize: '12px' }}>
-                              Tomorrow ›
-                            </button>
-                          </div>
+                          <span style={{ fontSize: '10.5px', color: 'var(--color-slate)', fontWeight: '500' }}>
+                            12 Classes
+                          </span>
                         </div>
 
-                        {/* 3 Sections Timetable Cards (A, B, C) */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-16)', width: '100%' }}>
-                          {[1, 2, 3].map((sectionNum) => {
-                            const secLetter = sectionNum === 1 ? 'A' : sectionNum === 2 ? 'B' : 'C';
+                        {/* 3x4 Grid of Classes */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((clsNum) => {
+                            const isSelected = selectedClass === clsNum;
+
                             return (
                               <div
-                                key={sectionNum}
+                                key={clsNum}
+                                onClick={() => setSelectedClass(clsNum)}
                                 style={{
-                                  background: 'var(--color-gallery-white)',
-                                  border: '1px solid var(--color-hairline-silver)',
-                                  borderRadius: 'var(--radius-cards)',
-                                  overflow: 'hidden',
-                                  width: '100%'
+                                  borderRadius: '10px',
+                                  padding: '7px 3px',
+                                  textAlign: 'center',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '1px',
+                                  background: isSelected ? 'var(--color-ink)' : 'var(--color-paper-frost)',
+                                  border: isSelected ? '1.5px solid var(--color-ink)' : '1px solid var(--color-hairline-silver)',
+                                  boxShadow: isSelected ? '0 3px 8px rgba(0,0,0,0.18)' : 'none'
                                 }}
+                                title={`Select Class ${clsNum}`}
                               >
-                                <div style={{ padding: '12px 18px', background: 'var(--color-studio-mist)', borderBottom: '1px solid var(--color-control-gray)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <h5 style={{ color: 'var(--color-ink)', margin: 0, fontSize: '14px', fontWeight: '600' }}>
-                                    Class {selectedClass} — Section {secLetter}
-                                  </h5>
-                                  <span style={{ fontSize: '11px', color: 'var(--color-slate)' }}>8 Daily Slots</span>
-                                </div>
-
-                                <div style={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-                                  <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', color: 'var(--color-ink)', fontSize: '11px' }}>
-                                    <thead>
-                                      <tr style={{ background: 'var(--color-paper-frost)', borderBottom: '1px solid var(--color-hairline-silver)', textTransform: 'uppercase', fontSize: '9.5px', color: 'var(--color-slate)', letterSpacing: '0.02em' }}>
-                                        {PERIOD_TIMINGS.map((timing, pIdx) => (
-                                          <th key={pIdx} style={{ padding: '7px 2px', textAlign: 'center', width: '12.5%', whiteSpace: 'nowrap' }}>
-                                            {timing}
-                                          </th>
-                                        ))}
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      <tr>
-                                        {PERIOD_TIMINGS.map((timing, pIdx) => {
-                                          const cellKey = selectedClass + '_' + sectionNum + '_' + pIdx;
-                                          const cellData = scheduleGrid[cellKey];
-
-                                          if (pIdx === 3) {
-                                            return (
-                                              <td key={pIdx} style={{ padding: '8px 2px', textAlign: 'center', background: 'var(--color-studio-mist)', borderRight: '1px solid var(--color-control-gray)', color: 'var(--color-slate)', fontWeight: '500', fontSize: '11px', whiteSpace: 'nowrap' }}>
-                                                Lunch Break
-                                              </td>
-                                            );
-                                          }
-
-                                          return (
-                                            <td
-                                              key={pIdx}
-                                              onDragOver={(e) => e.preventDefault()}
-                                              onDrop={(e) => {
-                                                const roomTransfer = e.dataTransfer.getData('application/room-transfer');
-                                                if (roomTransfer) {
-                                                  handleDropRoom(sectionNum, pIdx, JSON.parse(roomTransfer));
-                                                  return;
-                                                }
-                                                const teacherData = e.dataTransfer.getData('application/json');
-                                                if (teacherData) {
-                                                  handleDrop(sectionNum, pIdx, JSON.parse(teacherData));
-                                                }
-                                              }}
-                                              onClick={() => {
-                                                if (activeTeacherClick) {
-                                                  assignTeacherToCell(sectionNum, pIdx, activeTeacherClick);
-                                                } else if (activeRoomClick) {
-                                                  assignRoomToCell(sectionNum, pIdx, activeRoomClick);
-                                                }
-                                              }}
-                                              style={{
-                                                padding: '8px 2px',
-                                                textAlign: 'center',
-                                                borderRight: '1px solid var(--color-control-gray)',
-                                                background: cellData ? 'var(--color-gallery-white)' : 'var(--color-studio-mist)',
-                                                cursor: (activeTeacherClick || activeRoomClick) ? 'pointer' : 'default',
-                                                verticalAlign: 'middle',
-                                                overflow: 'hidden'
-                                              }}
-                                            >
-                                              {cellData ? (
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'center' }}>
-                                                  <div style={{ fontWeight: '600', color: 'var(--color-ink)', fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
-                                                    {cellData.teacher}
-                                                  </div>
-                                                  <div style={{ color: 'var(--color-pricing-blue)', fontSize: '10.5px', fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
-                                                    {cellData.sub}
-                                                  </div>
-                                                  <div
-                                                    onClick={(e) => { e.stopPropagation(); handleEditRoomNumber(sectionNum, pIdx); }}
-                                                    style={{ fontSize: '9.5px', color: 'var(--color-slate)', border: '1px solid var(--color-hairline-silver)', padding: '1px 4px', borderRadius: '4px', cursor: 'pointer' }}
-                                                    title="Click to edit room"
-                                                  >
-                                                    {cellData.room_no || 'Room'}
-                                                  </div>
-                                                  <button
-                                                    onClick={(e) => { e.stopPropagation(); clearPeriodUnit(sectionNum, pIdx); }}
-                                                    style={{ background: 'transparent', border: 'none', color: 'var(--color-steel)', cursor: 'pointer', fontSize: '9.5px', marginTop: '1px' }}
-                                                    title="Clear Slot"
-                                                  >
-                                                    Clear
-                                                  </button>
-                                                </div>
-                                              ) : (
-                                                <div style={{ color: 'var(--color-steel)', fontSize: '11px', padding: '6px 0', fontStyle: 'italic', letterSpacing: '-0.2px' }}>
-                                                  Available
-                                                </div>
-                                              )}
-                                            </td>
-                                          );
-                                        })}
-                                      </tr>
-                                    </tbody>
-                                  </table>
-                                </div>
+                                <span style={{
+                                  fontSize: '8.5px',
+                                  fontWeight: '700',
+                                  letterSpacing: '0.04em',
+                                  textTransform: 'uppercase',
+                                  color: isSelected ? '#94a3b8' : 'var(--color-slate)'
+                                }}>
+                                  CLASS
+                                </span>
+                                <strong style={{
+                                  fontSize: '15px',
+                                  fontWeight: '800',
+                                  color: isSelected ? '#ffffff' : 'var(--color-ink)'
+                                }}>
+                                  {clsNum}
+                                </strong>
                               </div>
                             );
                           })}
                         </div>
                       </div>
-                    )}
-                  </>
+                    </div>
+
+                    {/* ========================================================================= */}
+                    {/* BOTTOM SECTION: 36 CLASSES LIVE TRACKER (LEFT) + TIMETABLE (RIGHT)        */}
+                    {/* ========================================================================= */}
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: showClassSidebar ? '300px minmax(0, 1fr)' : 'minmax(0, 1fr)',
+                      gap: 'var(--spacing-16)',
+                      width: '100%',
+                      alignItems: 'start'
+                    }}>
+                      
+                      {/* LEFT: 36 CLASSES LIVE TRACKER */}
+                      {showClassSidebar && (
+                        <div style={{
+                          background: 'var(--color-gallery-white)',
+                          border: '1px solid var(--color-hairline-silver)',
+                          borderRadius: 'var(--radius-cards)',
+                          padding: 'var(--spacing-16)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '12px',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+                        }}>
+                          {/* Header */}
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <Clock size={16} color="var(--color-pricing-blue)" />
+                              <h4 style={{ color: 'var(--color-ink)', fontSize: '13.5px', fontWeight: '700', margin: 0 }}>
+                                36 Rooms Live Tracker
+                              </h4>
+                            </div>
+                            <span style={{ fontSize: '10.5px', color: 'var(--color-slate)', fontWeight: '600' }}>
+                              101–136
+                            </span>
+                          </div>
+
+                          {/* Selected Hour Dropdown */}
+                          <div>
+                            <label style={{ display: 'block', fontSize: '10px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.04em', marginBottom: '5px' }}>
+                              SELECTED HOUR:
+                            </label>
+                            <select
+                              value={trackerSelectedPeriod}
+                              onChange={(e) => setTrackerSelectedPeriod(parseInt(e.target.value))}
+                              className="search-input"
+                              style={{ width: '100%', padding: '6px 10px', fontSize: '11.5px', cursor: 'pointer', fontWeight: '500', background: 'var(--color-paper-frost)' }}
+                            >
+                              <option value={0}>Period 1 (9-10 AM)</option>
+                              <option value={1}>Period 2 (10-11 AM)</option>
+                              <option value={2}>Period 3 (11-12 PM)</option>
+                              <option value={3}>Lunch Break (12-1 PM)</option>
+                              <option value={4}>Period 4 (1-2 PM)</option>
+                              <option value={5}>Period 5 (2-3 PM)</option>
+                              <option value={6}>Period 6 (3-4 PM)</option>
+                              <option value={7}>Period 7 (4-5 PM)</option>
+                            </select>
+                          </div>
+
+                          {/* Drag Hint */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10.5px', color: 'var(--color-slate)', background: 'var(--color-studio-mist)', padding: '5px 8px', borderRadius: '6px' }}>
+                            <GripVertical size={12} color="var(--color-pricing-blue)" />
+                            <span>Drag room to timetable or click to select</span>
+                          </div>
+
+                          {/* 36 Rooms Vertical Scrollable Grid (101 to 136) */}
+                          <div style={{ maxHeight: '640px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '7px', paddingRight: '2px' }}>
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((classNum) => {
+                              const isClassActive = selectedClass === classNum;
+                              return (
+                                <div key={classNum} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  {/* Class Standard Label (e.g. C1) */}
+                                  <div
+                                    onClick={() => setSelectedClass(classNum)}
+                                    style={{
+                                      width: '26px',
+                                      fontSize: '11px',
+                                      fontWeight: '700',
+                                      color: isClassActive ? 'var(--color-pricing-blue)' : 'var(--color-slate)',
+                                      cursor: 'pointer',
+                                      textAlign: 'center',
+                                      flexShrink: 0
+                                    }}
+                                    title={`Switch timetable view to Class ${classNum}`}
+                                  >
+                                    C{classNum}
+                                  </div>
+
+                                  {/* 3 Room Cards (101, 102, 103 for C1; 104, 105, 106 for C2, etc.) */}
+                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '5px', flex: 1 }}>
+                                    {[1, 2, 3].map((colIdx) => {
+                                      const roomNum = 100 + (classNum - 1) * 3 + colIdx;
+                                      const roomName = `Room ${roomNum}`;
+                                      const occ = getRoomOccupancyInfo(roomNum, trackerSelectedPeriod);
+                                      const isSelected = activeRoomClick === roomName;
+
+                                      return (
+                                        <div
+                                          key={colIdx}
+                                          draggable={true}
+                                          onDragStart={(e) => handleDragStartRoom(e, roomName)}
+                                          onClick={() => {
+                                            setActiveTeacherClick(null);
+                                            setActiveRoomClick(isSelected ? null : roomName);
+                                          }}
+                                          style={{
+                                            background: isSelected ? '#eff6ff' : occ.isOccupied ? '#f0fdf4' : occ.isLunch ? '#fefce8' : 'var(--color-paper-frost)',
+                                            border: isSelected ? '1.5px solid var(--color-pricing-blue)' : occ.isOccupied ? '1px solid #86efac' : occ.isLunch ? '1px solid #fef08a' : '1px solid var(--color-hairline-silver)',
+                                            borderRadius: '8px',
+                                            padding: '6px 3px',
+                                            textAlign: 'center',
+                                            cursor: 'grab',
+                                            transition: 'all 0.15s ease',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            gap: '2px',
+                                            boxShadow: isSelected ? '0 2px 6px rgba(0,113,227,0.18)' : 'none',
+                                            userSelect: 'none'
+                                          }}
+                                          title={`${roomName} • ${occ.label}${occ.detail ? ` (${occ.detail})` : ''} - Drag to timetable or click to select`}
+                                        >
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                            <GripVertical size={10} color={isSelected ? 'var(--color-pricing-blue)' : 'var(--color-slate)'} />
+                                            <strong style={{ fontSize: '10.5px', color: isSelected ? 'var(--color-pricing-blue)' : 'var(--color-ink)' }}>
+                                              Room {roomNum}
+                                            </strong>
+                                          </div>
+                                          <span style={{
+                                            fontSize: '8.5px',
+                                            fontWeight: '700',
+                                            color: isSelected ? 'var(--color-pricing-blue)' : occ.color,
+                                            maxWidth: '100%',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap'
+                                          }}>
+                                            {occ.isLunch ? 'Lunch' : occ.isOccupied ? (occ.detail ? `${occ.detail} • Filled` : 'Filled') : 'Vacant'}
+                                          </span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                    {/* ========================================================================= */}
+                    {/* RIGHT PANEL: HEADER + QUICK DRAG & DROP TEACHER BOARD + SECTION SCHEDULES  */}
+                    {/* ========================================================================= */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-16)', minWidth: 0 }}>
+                      
+                      {/* Top Header Card with DB Sync status and Date Navigation */}
+                      <div style={{
+                        background: 'var(--color-gallery-white)',
+                        border: '1px solid var(--color-hairline-silver)',
+                        borderRadius: 'var(--radius-cards)',
+                        padding: 'var(--spacing-14) var(--spacing-20)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: '12px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                          <Calendar size={18} color="var(--color-pricing-blue)" />
+                          <h3 style={{ fontSize: '16.5px', fontWeight: '600', color: 'var(--color-ink)', margin: 0 }}>
+                            Class {selectedClass} Timetable Schedule
+                          </h3>
+                          <span style={{ fontSize: '11px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: '2px 8px', borderRadius: 'var(--radius-buttons)', fontWeight: '600' }}>
+                            ● Live DB Sync Active
+                          </span>
+                        </div>
+
+                        {/* Date Picker + Day Badge + Nav */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-studio-mist)', padding: '4px 10px', borderRadius: 'var(--radius-inputs)', border: '1px solid var(--color-steel)' }}>
+                            <input
+                              type="date"
+                              value={selectedDate}
+                              onChange={(e) => setSelectedDate(e.target.value)}
+                              style={{ background: 'transparent', color: 'var(--color-ink)', border: 'none', fontSize: '12px', fontWeight: '500', outline: 'none' }}
+                            />
+                          </div>
+
+                          <span style={{
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            background: 'var(--color-paper-frost)',
+                            color: 'var(--color-ink)',
+                            border: '1px solid var(--color-hairline-silver)',
+                            padding: '4px 12px',
+                            borderRadius: 'var(--radius-buttons)'
+                          }}>
+                            {getFormattedDateWithDay(selectedDate)}
+                          </span>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <button onClick={handleNavigateYesterday} className="btn-apple-outline" style={{ padding: '4px 8px', fontSize: '11.5px' }}>
+                              ‹
+                            </button>
+                            <button onClick={handleNavigateToday} className="btn-apple-outline" style={{ padding: '4px 8px', fontSize: '11.5px', color: 'var(--color-pricing-blue)', borderColor: 'var(--color-pricing-blue)' }}>
+                              Today
+                            </button>
+                            <button onClick={handleNavigateTomorrow} className="btn-apple-outline" style={{ padding: '4px 8px', fontSize: '11.5px' }}>
+                              ›
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Quick Drag-and-Drop Resource Board (Teachers & Rooms) */}
+                      <div style={{
+                        background: 'var(--color-gallery-white)',
+                        border: '1px solid var(--color-hairline-silver)',
+                        borderRadius: 'var(--radius-cards)',
+                        padding: 'var(--spacing-16) var(--spacing-20)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Users size={16} color="var(--color-pricing-blue)" />
+                            <strong style={{ fontSize: '14px', color: 'var(--color-ink)' }}>
+                              Quick Drag-and-Drop Resource Board
+                            </strong>
+                          </div>
+
+                          {/* Tab Switcher for Teachers vs Rooms */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--color-studio-mist)', padding: '3px', borderRadius: 'var(--radius-buttons)', border: '1px solid var(--color-hairline-silver)' }}>
+                            <button
+                              type="button"
+                              onClick={() => setBoardActiveTab('teachers')}
+                              style={{
+                                border: 'none',
+                                padding: '4px 12px',
+                                borderRadius: '6px',
+                                fontSize: '11.5px',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                background: boardActiveTab === 'teachers' ? 'var(--color-gallery-white)' : 'transparent',
+                                color: boardActiveTab === 'teachers' ? 'var(--color-pricing-blue)' : 'var(--color-slate)',
+                                boxShadow: boardActiveTab === 'teachers' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              👨‍🏫 Faculty ({filteredTeachers.length})
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setBoardActiveTab('rooms')}
+                              style={{
+                                border: 'none',
+                                padding: '4px 12px',
+                                borderRadius: '6px',
+                                fontSize: '11.5px',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                background: boardActiveTab === 'rooms' ? 'var(--color-gallery-white)' : 'transparent',
+                                color: boardActiveTab === 'rooms' ? 'var(--color-pricing-blue)' : 'var(--color-slate)',
+                                boxShadow: boardActiveTab === 'rooms' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              🚪 Rooms & Labs ({availableRoomsList.length})
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Teachers Strip */}
+                        {boardActiveTab === 'teachers' ? (
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            overflowX: 'auto',
+                            paddingBottom: '6px',
+                            WebkitOverflowScrolling: 'touch'
+                          }}>
+                            {filteredTeachers.map((t, idx) => {
+                              const assignedCount = getTeacherAssignedCount(t.name);
+                              const isMax = assignedCount >= MAX_PERIODS_PER_TEACHER;
+                              const isSelected = activeTeacherClick?.id === t.id;
+
+                              return (
+                                <div
+                                  key={t.id || idx}
+                                  draggable={!isMax}
+                                  onDragStart={(e) => handleDragStart(e, t)}
+                                  onClick={() => {
+                                    setActiveRoomClick(null);
+                                    setActiveTeacherClick(isSelected ? null : t);
+                                  }}
+                                  style={{
+                                    minWidth: '160px',
+                                    background: isSelected ? '#eff6ff' : 'var(--color-paper-frost)',
+                                    border: isSelected ? '1.5px solid var(--color-pricing-blue)' : '1px solid var(--color-hairline-silver)',
+                                    borderRadius: '12px',
+                                    padding: '8px 12px',
+                                    cursor: isMax ? 'not-allowed' : 'grab',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '4px',
+                                    flexShrink: 0,
+                                    transition: 'all 0.15s ease',
+                                    boxShadow: isSelected ? '0 2px 6px rgba(0,113,227,0.12)' : 'none'
+                                  }}
+                                  title={isMax ? 'Maximum workload reached (7/7 periods)' : 'Drag this teacher card or click to assign'}
+                                >
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0 }}>
+                                      <GripVertical size={13} color={isMax ? 'var(--color-steel)' : 'var(--color-slate)'} />
+                                      <strong style={{ fontSize: '12.5px', color: 'var(--color-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {t.name}
+                                      </strong>
+                                    </div>
+                                    <span style={{
+                                      fontSize: '10px',
+                                      fontWeight: '700',
+                                      padding: '1px 6px',
+                                      borderRadius: '6px',
+                                      background: isMax ? 'var(--color-error-bg)' : '#f0fdf4',
+                                      color: isMax ? 'var(--color-error)' : '#16a34a',
+                                      border: `1px solid ${isMax ? 'var(--color-error-border)' : '#bbf7d0'}`
+                                    }}>
+                                      {assignedCount}/7
+                                    </span>
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--color-slate)', paddingLeft: '17px' }}>
+                                    <BookOpen size={11} color="var(--color-pricing-blue)" />
+                                    <span style={{ textTransform: 'capitalize' }}>{t.subject}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          /* Rooms Strip */
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            overflowX: 'auto',
+                            paddingBottom: '6px',
+                            WebkitOverflowScrolling: 'touch'
+                          }}>
+                            {availableRoomsList.map((roomName, idx) => {
+                              const isSelected = activeRoomClick === roomName;
+
+                              return (
+                                <div
+                                  key={idx}
+                                  draggable
+                                  onDragStart={(e) => handleDragStartRoom(e, roomName)}
+                                  onClick={() => {
+                                    setActiveTeacherClick(null);
+                                    setActiveRoomClick(isSelected ? null : roomName);
+                                  }}
+                                  style={{
+                                    minWidth: '110px',
+                                    background: isSelected ? '#eff6ff' : 'var(--color-paper-frost)',
+                                    border: isSelected ? '1.5px solid var(--color-pricing-blue)' : '1px solid var(--color-hairline-silver)',
+                                    borderRadius: '10px',
+                                    padding: '8px 12px',
+                                    cursor: 'grab',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    flexShrink: 0,
+                                    transition: 'all 0.15s ease',
+                                    boxShadow: isSelected ? '0 2px 6px rgba(0,113,227,0.12)' : 'none'
+                                  }}
+                                  title="Drag room chip or click to allocate"
+                                >
+                                  <GripVertical size={13} color="var(--color-slate)" />
+                                  <Building size={13} color="var(--color-pricing-blue)" />
+                                  <strong style={{ fontSize: '12px', color: 'var(--color-ink)', whiteSpace: 'nowrap' }}>
+                                    {roomName}
+                                  </strong>
+                                </div>
+                              );
+                            })}
+
+                            {/* Button to add custom room */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const custom = prompt('Enter new Room Name / Lab:');
+                                if (custom && custom.trim() !== '') {
+                                  const trimmed = custom.trim();
+                                  if (!availableRoomsList.includes(trimmed)) {
+                                    setAvailableRoomsList(prev => [...prev, trimmed]);
+                                    showToast(`Added ${trimmed} to room palette`, 'success');
+                                  }
+                                }
+                              }}
+                              className="btn-apple-outline"
+                              style={{ padding: '6px 12px', fontSize: '11px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px' }}
+                            >
+                              <Plus size={12} />
+                              <span>Add Room</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Active Selection Feedback Bar */}
+                      {activeTeacherClick && (
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '8px',
+                          background: '#eff6ff',
+                          border: '1.5px solid var(--color-pricing-blue)',
+                          padding: '8px 16px',
+                          borderRadius: '10px',
+                          fontSize: '12.5px',
+                          color: '#1d4ed8'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <User size={15} />
+                            <span>Selected Faculty: <strong>{activeTeacherClick.name}</strong> ({activeTeacherClick.subject})</span>
+                            <span style={{ fontSize: '11.5px', color: 'var(--color-slate)' }}>• Click any timetable period cell below to assign</span>
+                          </div>
+                          <button
+                            onClick={() => setActiveTeacherClick(null)}
+                            style={{ background: 'transparent', border: 'none', color: '#1d4ed8', cursor: 'pointer', fontWeight: 'bold' }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
+
+                      {activeRoomClick && (
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '8px',
+                          background: '#f0fdf4',
+                          border: '1.5px solid #16a34a',
+                          padding: '8px 16px',
+                          borderRadius: '10px',
+                          fontSize: '12.5px',
+                          color: '#15803d'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Building size={15} />
+                            <span>Selected Room: <strong>{activeRoomClick}</strong></span>
+                            <span style={{ fontSize: '11.5px', color: 'var(--color-slate)' }}>• Click any room cell below to allocate</span>
+                          </div>
+                          <button
+                            onClick={() => setActiveRoomClick(null)}
+                            style={{ background: 'transparent', border: 'none', color: '#15803d', cursor: 'pointer', fontWeight: 'bold' }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
+
+                      {/* 3. Multi-Section Timetable Schedules (Section 1, 2, 3) */}
+                      {[1, 2, 3].map((sectionNum) => {
+                        const sectionCode = `CLS_${selectedClass}_SEC_${sectionNum}`;
+
+                        return (
+                          <div
+                            key={sectionNum}
+                            style={{
+                              background: 'var(--color-gallery-white)',
+                              border: '1px solid var(--color-hairline-silver)',
+                              borderRadius: 'var(--radius-cards)',
+                              overflow: 'hidden',
+                              width: '100%'
+                            }}
+                          >
+                            {/* Section Header */}
+                            <div style={{
+                              padding: '12px 18px',
+                              background: 'var(--color-studio-mist)',
+                              borderBottom: '1px solid var(--color-control-gray)',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              flexWrap: 'wrap',
+                              gap: '8px'
+                            }}>
+                              <h5 style={{ color: 'var(--color-ink)', margin: 0, fontSize: '14px', fontWeight: '600' }}>
+                                Class {selectedClass} — Section {sectionNum} Schedule ({getFormattedDateWithDay(selectedDate)})
+                              </h5>
+                              <span style={{ fontSize: '11px', background: 'var(--color-paper-frost)', color: 'var(--color-pricing-blue)', border: '1px solid var(--color-hairline-silver)', padding: '2px 8px', borderRadius: '6px', fontWeight: '600' }}>
+                                {sectionCode} • Section {sectionNum}
+                              </span>
+                            </div>
+
+                            {/* 4-Row Timetable Table */}
+                            <div style={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px', tableLayout: 'fixed' }}>
+                                <thead>
+                                  {/* Row 1: TIMING */}
+                                  <tr style={{ background: 'var(--color-paper-frost)', borderBottom: '1px solid var(--color-hairline-silver)' }}>
+                                    <th style={{ padding: '8px 10px', textAlign: 'left', width: '90px', textTransform: 'uppercase', fontSize: '10px', color: 'var(--color-slate)', fontWeight: '700', letterSpacing: '0.04em' }}>
+                                      TIMING
+                                    </th>
+                                    {['9–10', '10–11', '11–12', '12–01 (Lunch)', '01–02', '02–03', '03–04', '04–05'].map((timeLabel, pIdx) => (
+                                      <th
+                                        key={pIdx}
+                                        style={{
+                                          padding: '8px 4px',
+                                          textAlign: 'center',
+                                          fontSize: '11px',
+                                          fontWeight: '600',
+                                          color: pIdx === 3 ? '#a16207' : 'var(--color-slate)',
+                                          background: pIdx === 3 ? '#fefce8' : 'transparent',
+                                          borderRight: '1px solid var(--color-control-gray)'
+                                        }}
+                                      >
+                                        {timeLabel}
+                                      </th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {/* Row 2: room_no */}
+                                  <tr style={{ borderBottom: '1px solid var(--color-control-gray)' }}>
+                                    <td style={{ padding: '8px 10px', fontWeight: '600', color: 'var(--color-pricing-blue)', fontSize: '11px' }}>
+                                      room_no
+                                    </td>
+                                    {[0, 1, 2, 3, 4, 5, 6, 7].map((pIdx) => {
+                                      const cellKey = `${selectedClass}_${sectionNum}_${pIdx}`;
+                                      const cellData = scheduleGrid[cellKey];
+                                      const hasRoom = Boolean(cellData?.room_no && cellData.room_no.trim() !== '' && cellData.room_no !== 'Recess');
+                                      const assignedRoom = hasRoom ? cellData.room_no.trim() : null;
+                                      const isDragTarget = dragOverCell === `${cellKey}_room`;
+
+                                      if (pIdx === 3) {
+                                        return (
+                                          <td key={pIdx} style={{ padding: '6px 4px', textAlign: 'center', background: '#fefce8', borderRight: '1px solid var(--color-control-gray)', color: '#a16207', fontWeight: '600', fontSize: '10.5px' }}>
+                                            — Lunch —
+                                          </td>
+                                        );
+                                      }
+
+                                      return (
+                                        <td
+                                          key={pIdx}
+                                          onDragOver={(e) => {
+                                            e.preventDefault();
+                                            e.dataTransfer.dropEffect = 'copy';
+                                          }}
+                                          onDragEnter={() => setDragOverCell(`${cellKey}_room`)}
+                                          onDragLeave={() => setDragOverCell(null)}
+                                          onDrop={(e) => {
+                                            e.preventDefault();
+                                            setDragOverCell(null);
+                                            const roomTransfer = e.dataTransfer.getData('application/room-transfer');
+                                            if (roomTransfer) {
+                                              try {
+                                                handleDropRoom(sectionNum, pIdx, JSON.parse(roomTransfer));
+                                                return;
+                                              } catch (err) {}
+                                            }
+                                            const rawData = e.dataTransfer.getData('application/json') || e.dataTransfer.getData('text/plain');
+                                            if (rawData) {
+                                              try {
+                                                const parsed = JSON.parse(rawData);
+                                                if (parsed.roomNo || parsed.type === 'ROOM') {
+                                                  handleDropRoom(sectionNum, pIdx, parsed);
+                                                } else if (parsed.name) {
+                                                  handleDrop(sectionNum, pIdx, parsed);
+                                                }
+                                              } catch (err) {}
+                                            }
+                                          }}
+                                          onClick={() => {
+                                            if (activeRoomClick) {
+                                              handleDropRoom(sectionNum, pIdx, activeRoomClick);
+                                            } else {
+                                              handleEditRoomNumber(sectionNum, pIdx);
+                                            }
+                                          }}
+                                          style={{
+                                            padding: '6px 4px',
+                                            textAlign: 'center',
+                                            borderRight: '1px solid var(--color-control-gray)',
+                                            background: isDragTarget ? '#eff6ff' : assignedRoom ? 'var(--color-gallery-white)' : 'transparent',
+                                            outline: isDragTarget ? '2px dashed var(--color-pricing-blue)' : 'none',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.15s ease'
+                                          }}
+                                        >
+                                          {assignedRoom ? (
+                                            <span style={{
+                                              background: 'var(--color-paper-frost)',
+                                              border: '1px solid var(--color-hairline-silver)',
+                                              color: 'var(--color-ink)',
+                                              padding: '2px 6px',
+                                              borderRadius: '6px',
+                                              fontSize: '10.5px',
+                                              fontWeight: '600',
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              gap: '4px'
+                                            }}>
+                                              <span>{assignedRoom}</span>
+                                              <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); handleEditRoomNumber(sectionNum, pIdx); }}
+                                                style={{ background: 'transparent', border: 'none', color: 'var(--color-slate)', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}
+                                                title="Edit room"
+                                              >
+                                                <Edit2 size={9} />
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); clearPeriodRoom(sectionNum, pIdx); }}
+                                                style={{ background: 'transparent', border: 'none', color: 'var(--color-slate)', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}
+                                                title="Clear room"
+                                              >
+                                                <X size={9} />
+                                              </button>
+                                            </span>
+                                          ) : (
+                                            <span style={{
+                                              color: isDragTarget ? 'var(--color-pricing-blue)' : 'var(--color-steel)',
+                                              fontSize: '11px',
+                                              fontWeight: isDragTarget ? '700' : '500'
+                                            }}>
+                                              {isDragTarget ? '⬇ Drop' : '+ Room'}
+                                            </span>
+                                          )}
+                                        </td>
+                                      );
+                                    })}
+                                  </tr>
+
+                                  {/* Row 3: teacher */}
+                                  <tr style={{ borderBottom: '1px solid var(--color-control-gray)' }}>
+                                    <td style={{ padding: '8px 10px', fontWeight: '600', color: 'var(--color-ink)', fontSize: '11px' }}>
+                                      teacher
+                                    </td>
+                                    {[0, 1, 2, 3, 4, 5, 6, 7].map((pIdx) => {
+                                      const cellKey = `${selectedClass}_${sectionNum}_${pIdx}`;
+                                      const cellData = scheduleGrid[cellKey];
+                                      const isDragTarget = dragOverCell === cellKey;
+
+                                      if (pIdx === 3) {
+                                        return (
+                                          <td key={pIdx} style={{ padding: '8px 4px', textAlign: 'center', background: '#fefce8', borderRight: '1px solid var(--color-control-gray)', color: '#a16207', fontWeight: '600', fontSize: '11px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                              <Coffee size={12} />
+                                              <span>Lunch Break</span>
+                                            </div>
+                                          </td>
+                                        );
+                                      }
+
+                                      return (
+                                        <td
+                                          key={pIdx}
+                                          onDragOver={(e) => {
+                                            e.preventDefault();
+                                            e.dataTransfer.dropEffect = 'copy';
+                                          }}
+                                          onDragEnter={() => setDragOverCell(cellKey)}
+                                          onDragLeave={() => setDragOverCell(null)}
+                                          onDrop={(e) => {
+                                            e.preventDefault();
+                                            setDragOverCell(null);
+                                            const roomTransfer = e.dataTransfer.getData('application/room-transfer');
+                                            if (roomTransfer) {
+                                              try {
+                                                handleDropRoom(sectionNum, pIdx, JSON.parse(roomTransfer));
+                                                return;
+                                              } catch (err) {}
+                                            }
+                                            const teacherData = e.dataTransfer.getData('application/json') || e.dataTransfer.getData('text/plain');
+                                            if (teacherData) {
+                                              try {
+                                                handleDrop(sectionNum, pIdx, JSON.parse(teacherData));
+                                              } catch (err) {}
+                                            }
+                                          }}
+                                          onClick={() => {
+                                            if (activeTeacherClick) {
+                                              assignTeacherToCell(sectionNum, pIdx, activeTeacherClick);
+                                            }
+                                          }}
+                                          style={{
+                                            padding: '8px 4px',
+                                            textAlign: 'center',
+                                            borderRight: '1px solid var(--color-control-gray)',
+                                            background: isDragTarget ? '#eff6ff' : cellData?.teacher && cellData.teacher !== 'Unassigned' ? 'var(--color-gallery-white)' : 'var(--color-studio-mist)',
+                                            outline: isDragTarget ? '2px dashed var(--color-pricing-blue)' : 'none',
+                                            cursor: activeTeacherClick ? 'pointer' : 'default',
+                                            transition: 'all 0.15s ease'
+                                          }}
+                                        >
+                                          {cellData?.teacher && cellData.teacher !== 'Unassigned' ? (
+                                            <strong style={{ color: 'var(--color-ink)', fontSize: '11.5px' }}>
+                                              {cellData.teacher}
+                                            </strong>
+                                          ) : (
+                                            <span style={{ color: isDragTarget ? 'var(--color-pricing-blue)' : 'var(--color-steel)', fontSize: '11px', fontWeight: isDragTarget ? '700' : 'normal' }}>
+                                              {isDragTarget ? '⬇ Drop' : '+ Drop'}
+                                            </span>
+                                          )}
+                                        </td>
+                                      );
+                                    })}
+                                  </tr>
+
+                                  {/* Row 4: sub */}
+                                  <tr>
+                                    <td style={{ padding: '8px 10px', fontWeight: '600', color: 'var(--color-launch-orange)', fontSize: '11px' }}>
+                                      sub
+                                    </td>
+                                    {[0, 1, 2, 3, 4, 5, 6, 7].map((pIdx) => {
+                                      const cellKey = `${selectedClass}_${sectionNum}_${pIdx}`;
+                                      const cellData = scheduleGrid[cellKey];
+
+                                      if (pIdx === 3) {
+                                        return (
+                                          <td key={pIdx} style={{ padding: '6px 4px', textAlign: 'center', background: '#fefce8', borderRight: '1px solid var(--color-control-gray)', color: '#a16207', fontSize: '10.5px', fontWeight: '600' }}>
+                                            Recess
+                                          </td>
+                                        );
+                                      }
+
+                                      return (
+                                        <td key={pIdx} style={{ padding: '6px 4px', textAlign: 'center', borderRight: '1px solid var(--color-control-gray)' }}>
+                                          {cellData?.sub && cellData.sub !== 'General' && cellData.teacher !== 'Unassigned' ? (
+                                            <span style={{
+                                              background: '#f0fdf4',
+                                              color: '#16a34a',
+                                              border: '1px solid #bbf7d0',
+                                              padding: '2px 6px',
+                                              borderRadius: '6px',
+                                              fontSize: '10.5px',
+                                              fontWeight: '600',
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              gap: '4px'
+                                            }}>
+                                              <span>{cellData.sub}</span>
+                                              <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); clearPeriodUnit(sectionNum, pIdx); }}
+                                                style={{ background: 'transparent', border: 'none', color: '#16a34a', cursor: 'pointer', padding: 0, fontSize: '10px', fontWeight: 'bold' }}
+                                                title="Clear assignment"
+                                              >
+                                                ✕
+                                              </button>
+                                            </span>
+                                          ) : (
+                                            <span style={{ color: 'var(--color-steel)', fontSize: '11px' }}>
+                                              —
+                                            </span>
+                                          )}
+                                        </td>
+                                      );
+                                    })}
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
                 ) : mod.id === 'module2' ? (
                   /* MODULE 2: STUDENT DIRECTORY */
                   <div style={{ background: 'var(--color-gallery-white)', borderRadius: 'var(--radius-cards)', border: '1px solid var(--color-hairline-silver)', padding: 'var(--spacing-20)' }}>
@@ -1544,203 +2228,8 @@ export default function StaffPortalModule({ user }) {
                     </div>
                   </div>
                 ) : mod.id === 'module4' ? (
-                  /* MODULE 4: EXAMINATIONS */
-                  <div style={{ background: 'var(--color-gallery-white)', borderRadius: 'var(--radius-cards)', border: '1px solid var(--color-hairline-silver)', padding: 'var(--spacing-24)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-20)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-studio-mist)', padding: '4px 10px', borderRadius: 'var(--radius-inputs)', border: '1px solid var(--color-steel)' }}>
-                          <span style={{ fontSize: '12px', color: 'var(--color-slate)', fontWeight: '600' }}>Class:</span>
-                          <select
-                            value={mod4SelectedClass}
-                            onChange={(e) => setMod4SelectedClass(parseInt(e.target.value))}
-                            style={{ background: 'transparent', color: 'var(--color-ink)', border: 'none', fontSize: '12px', fontWeight: '500', outline: 'none', cursor: 'pointer' }}
-                          >
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(c => (
-                              <option key={c} value={c}>{c} Standard</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-studio-mist)', padding: '4px 10px', borderRadius: 'var(--radius-inputs)', border: '1px solid var(--color-steel)' }}>
-                          <span style={{ fontSize: '12px', color: 'var(--color-slate)', fontWeight: '600' }}>Section:</span>
-                          <select
-                            value={mod4SelectedSection}
-                            onChange={(e) => setMod4SelectedSection(e.target.value.toUpperCase())}
-                            style={{ background: 'transparent', color: 'var(--color-ink)', border: 'none', fontSize: '12px', fontWeight: '500', outline: 'none', cursor: 'pointer' }}
-                          >
-                            {['A', 'B', 'C'].map(sec => (
-                              <option key={sec} value={sec}>Section {sec}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-
-                      <div>
-                        {mod4ViewMode === 'list' ? (
-                          <button
-                            onClick={() => setMod4ViewMode('create')}
-                            className="btn-apple-primary"
-                            style={{ padding: '6px 16px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                          >
-                            <Plus size={14} /> Create Assignment
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => setMod4ViewMode('list')}
-                            className="btn-apple-outline"
-                            style={{ padding: '6px 16px', fontSize: '12px' }}
-                          >
-                            Back to List
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Mod 4 List View */}
-                    {mod4ViewMode === 'list' && (
-                      <div style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--color-ink)', fontSize: '13px' }}>
-                          <thead>
-                            <tr style={{ background: 'var(--color-paper-frost)', borderBottom: '1px solid var(--color-hairline-silver)', textTransform: 'uppercase', fontSize: '11px', color: 'var(--color-slate)', letterSpacing: '0.04em' }}>
-                              <th style={{ padding: '12px 14px', textAlign: 'left' }}>Title</th>
-                              <th style={{ padding: '12px 14px', textAlign: 'left' }}>Subject</th>
-                              <th style={{ padding: '12px 14px', textAlign: 'center' }}>Class & Sec</th>
-                              <th style={{ padding: '12px 14px', textAlign: 'center' }}>Questions</th>
-                              <th style={{ padding: '12px 14px', textAlign: 'center' }}>Action</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {mod4Loading ? (
-                              <tr>
-                                <td colSpan="5" style={{ padding: '32px', textAlign: 'center', color: 'var(--color-slate)' }}>Loading assignments...</td>
-                              </tr>
-                            ) : mod4Assignments.length === 0 ? (
-                              <tr>
-                                <td colSpan="5" style={{ padding: '32px', textAlign: 'center', color: 'var(--color-slate)' }}>No assignments recorded for this class.</td>
-                              </tr>
-                            ) : (
-                              mod4Assignments.map((asm, idx) => (
-                                <tr key={asm.id || idx} style={{ borderBottom: '1px solid var(--color-control-gray)', background: idx % 2 === 0 ? 'var(--color-gallery-white)' : 'var(--color-studio-mist)' }}>
-                                  <td style={{ padding: '12px 14px', fontWeight: '600', color: 'var(--color-ink)' }}>{asm.assignmentTitle}</td>
-                                  <td style={{ padding: '12px 14px', color: 'var(--color-pricing-blue)', fontWeight: '500' }}>{asm.subject}</td>
-                                  <td style={{ padding: '12px 14px', textAlign: 'center', color: 'var(--color-slate)' }}>C{asm.classStandard} - {asm.sectionName}</td>
-                                  <td style={{ padding: '12px 14px', textAlign: 'center' }}>{asm.questions?.length || 0} MCQs</td>
-                                  <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                                    <button
-                                      onClick={() => {
-                                        setMod4SelectedAssignment(asm);
-                                        setMod4ViewMode('view');
-                                        fetchMod4AssignmentQuestions(asm.id);
-                                      }}
-                                      className="btn-apple-outline"
-                                      style={{ padding: '4px 12px', fontSize: '12px' }}
-                                    >
-                                      View Details
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-
-                    {/* Mod 4 Create Mode */}
-                    {mod4ViewMode === 'create' && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-16)' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-                          <div>
-                            <label style={{ display: 'block', color: 'var(--color-slate)', fontSize: '12px', marginBottom: '4px' }}>Assignment Title</label>
-                            <input
-                              type="text"
-                              placeholder="e.g. Unit Test 1"
-                              value={mod4NewAssignmentTitle}
-                              onChange={(e) => setMod4NewAssignmentTitle(e.target.value)}
-                              className="search-input"
-                              style={{ width: '100%', boxSizing: 'border-box' }}
-                            />
-                          </div>
-                          <div>
-                            <label style={{ display: 'block', color: 'var(--color-slate)', fontSize: '12px', marginBottom: '4px' }}>Subject Name</label>
-                            <input
-                              type="text"
-                              placeholder="e.g. Mathematics"
-                              value={mod4NewAssignmentSubject}
-                              onChange={(e) => setMod4NewAssignmentSubject(e.target.value)}
-                              className="search-input"
-                              style={{ width: '100%', boxSizing: 'border-box' }}
-                            />
-                          </div>
-                          <div>
-                            <label style={{ display: 'block', color: 'var(--color-slate)', fontSize: '12px', marginBottom: '4px' }}>Conduct Date & Time</label>
-                            <input
-                              type="datetime-local"
-                              value={mod4NewAssignmentConductDate}
-                              onChange={(e) => setMod4NewAssignmentConductDate(e.target.value)}
-                              className="search-input"
-                              style={{ width: '100%', boxSizing: 'border-box' }}
-                            />
-                          </div>
-                        </div>
-
-                        {/* Questions list */}
-                        <div style={{ maxHeight: '420px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingRight: '6px' }}>
-                          {mod4NewQuestions.slice(0, 10).map((q, idx) => (
-                            <div key={idx} style={{ background: 'var(--color-studio-mist)', padding: '14px', borderRadius: '12px', border: '1px solid var(--color-hairline-silver)' }}>
-                              <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--color-ink)', marginBottom: '8px' }}>
-                                Question {q.questionNumber}
-                              </div>
-                              <input
-                                type="text"
-                                placeholder={`Enter question text #${q.questionNumber}`}
-                                value={q.questionText}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setMod4NewQuestions(prev => prev.map(item => item.questionNumber === q.questionNumber ? { ...item, questionText: val } : item));
-                                }}
-                                className="search-input"
-                                style={{ width: '100%', marginBottom: '8px', boxSizing: 'border-box' }}
-                              />
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-                                <input
-                                  type="text"
-                                  placeholder="Option A"
-                                  value={q.optionA}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    setMod4NewQuestions(prev => prev.map(item => item.questionNumber === q.questionNumber ? { ...item, optionA: val } : item));
-                                  }}
-                                  className="search-input"
-                                  style={{ width: '100%', boxSizing: 'border-box' }}
-                                />
-                                <input
-                                  type="text"
-                                  placeholder="Option B"
-                                  value={q.optionB}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    setMod4NewQuestions(prev => prev.map(item => item.questionNumber === q.questionNumber ? { ...item, optionB: val } : item));
-                                  }}
-                                  className="search-input"
-                                  style={{ width: '100%', boxSizing: 'border-box' }}
-                                />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                          <button onClick={() => setMod4ViewMode('list')} className="btn-apple-outline" style={{ padding: '8px 18px', fontSize: '13px' }}>
-                            Cancel
-                          </button>
-                          <button onClick={saveMod4Assignment} className="btn-apple-primary" style={{ padding: '8px 18px', fontSize: '13px' }}>
-                            Save Assignment
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  /* MODULE 4: EXAMINATIONS & RECORDINGS */
+                  <StaffExaminationModule user={user} showToast={showToast} />
                 ) : (
                   /* MODULE 5 WORKSPACE PLACEHOLDER */
                   <div style={{ background: 'var(--color-gallery-white)', borderRadius: 'var(--radius-cards)', border: '1px solid var(--color-hairline-silver)', padding: 'var(--spacing-28)', textAlign: 'center' }}>

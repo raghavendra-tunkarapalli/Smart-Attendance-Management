@@ -32,6 +32,18 @@ public class StudentAttendance {
     @Column(name = "status", nullable = false) // "PRESENT" or "ABSENT"
     private String status;
 
+    @Column(name = "period_index")
+    private Integer periodIndex;
+
+    @Column(name = "timing")
+    private String timing;
+
+    @Column(name = "subject_name")
+    private String subjectName;
+
+    @Column(name = "teacher_name")
+    private String teacherName;
+
     public StudentAttendance() {}
 
     public StudentAttendance(String studentId, String studentName, String parentName, Integer classStandard, String sectionName, LocalDate attendanceDate, String status) {
@@ -42,6 +54,20 @@ public class StudentAttendance {
         this.sectionName = sectionName;
         this.attendanceDate = attendanceDate;
         this.status = status;
+    }
+
+    public StudentAttendance(String studentId, String studentName, String parentName, Integer classStandard, String sectionName, LocalDate attendanceDate, String status, Integer periodIndex, String timing, String subjectName, String teacherName) {
+        this.studentId = studentId;
+        this.studentName = studentName;
+        this.parentName = parentName;
+        this.classStandard = classStandard;
+        this.sectionName = sectionName;
+        this.attendanceDate = attendanceDate;
+        this.status = status;
+        this.periodIndex = periodIndex;
+        this.timing = timing;
+        this.subjectName = subjectName;
+        this.teacherName = teacherName;
     }
 
     public Long getId() { return id; }
@@ -67,4 +93,16 @@ public class StudentAttendance {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public Integer getPeriodIndex() { return periodIndex; }
+    public void setPeriodIndex(Integer periodIndex) { this.periodIndex = periodIndex; }
+
+    public String getTiming() { return timing; }
+    public void setTiming(String timing) { this.timing = timing; }
+
+    public String getSubjectName() { return subjectName; }
+    public void setSubjectName(String subjectName) { this.subjectName = subjectName; }
+
+    public String getTeacherName() { return teacherName; }
+    public void setTeacherName(String teacherName) { this.teacherName = teacherName; }
 }
