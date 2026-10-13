@@ -2,24 +2,30 @@ package com.school.examination.controller;
 
 import com.school.examination.entity.AssignmentQuestion;
 import com.school.examination.entity.StudentAssignment;
+import com.school.examination.repository.AssignmentQuestionRepository;
 import com.school.examination.repository.StudentAssignmentRepository;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173", "*"}, allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH, RequestMethod.OPTIONS})
 @RestController
 @RequestMapping("/api/staff-examination")
 public class StaffExaminationController {
 
     private final StudentAssignmentRepository assignmentRepository;
+    private final AssignmentQuestionRepository questionRepository;
 
-    public StaffExaminationController(StudentAssignmentRepository assignmentRepository) {
+    public StaffExaminationController(StudentAssignmentRepository assignmentRepository,
+                                     AssignmentQuestionRepository questionRepository) {
         this.assignmentRepository = assignmentRepository;
+        this.questionRepository = questionRepository;
     }
 
     @PostMapping(value = {"/assignment/save", "/assignments", "/assignment"})
+    @Transactional
     public ResponseEntity<?> saveAssignment(@RequestBody StudentAssignment assignment) {
         if (assignment.getAssignmentTitle() == null || assignment.getAssignmentTitle().trim().isEmpty()) {
             return ResponseEntity.badRequest().body("Assignment title cannot be empty");
@@ -91,27 +97,78 @@ public class StaffExaminationController {
         return ResponseEntity.notFound().build();
     }
 
-    @RequestMapping(value = "/assignments/{id}/release-results", method = {RequestMethod.PUT, RequestMethod.POST})
-    public ResponseEntity<?> releaseResults(@PathVariable Long id, @RequestParam Boolean released) {
+    @RequestMapping(value = {
+        "/assignments/{id}/release-results",
+        "/assignments/{id}/toggle-status",
+        "/assignments/{id}/unpublish",
+        "/assignments/{id}/publish"
+    }, method = {RequestMethod.PUT, RequestMethod.POST, RequestMethod.PATCH, RequestMethod.GET})
+    @Transactional
+    public ResponseEntity<?> releaseResults(
+            @PathVariable Long id,
+            @RequestParam(required = false) Boolean released,
+            @RequestBody(required = false) Map<String, Object> body,
+            jakarta.servlet.http.HttpServletRequest request) {
         Optional<StudentAssignment> opt = assignmentRepository.findById(id);
         if (opt.isPresent()) {
             StudentAssignment asm = opt.get();
-            asm.setResultsReleased(released);
+            String uri = request != null ? request.getRequestURI() : "";
+            Boolean newStatus = released;
+
+            // Direct route hints
+            if (uri.endsWith("/unpublish")) {
+                newStatus = false;
+            } else if (uri.endsWith("/publish")) {
+                newStatus = true;
+            }
+
+            // Body fallback
+            if (newStatus == null && body != null && body.containsKey("released")) {
+                Object val = body.get("released");
+                if (val instanceof Boolean) {
+                    newStatus = (Boolean) val;
+                } else if (val != null) {
+                    newStatus = Boolean.parseBoolean(val.toString());
+                }
+            }
+
+            // Auto toggle if not explicitly specified
+            if (newStatus == null) {
+                newStatus = asm.getResultsReleased() == null || !asm.getResultsReleased();
+            }
+
+            asm.setResultsReleased(newStatus);
             StudentAssignment saved = assignmentRepository.save(asm);
             return ResponseEntity.ok(Map.of(
-                "message", "Results release status updated successfully",
+                "message", newStatus ? "Exam published successfully" : "Exam unpublished successfully (Draft mode)",
                 "assignmentId", saved.getId(),
+                "id", saved.getId(),
                 "resultsReleased", saved.getResultsReleased()
             ));
         }
         return ResponseEntity.notFound().build();
     }
 
-    @RequestMapping(value = {"/assignments/{id}", "/assignments/{id}/delete"}, method = {RequestMethod.DELETE, RequestMethod.POST})
+    @RequestMapping(value = {
+        "/assignments/{id}",
+        "/assignments/{id}/delete"
+    }, method = {RequestMethod.DELETE, RequestMethod.POST, RequestMethod.GET})
+    @Transactional
     public ResponseEntity<?> deleteAssignment(@PathVariable Long id) {
-        if (assignmentRepository.existsById(id)) {
-            assignmentRepository.deleteById(id);
-            return ResponseEntity.ok(Map.of("message", "Assignment deleted successfully", "id", id));
+        Optional<StudentAssignment> opt = assignmentRepository.findById(id);
+        if (opt.isPresent()) {
+            StudentAssignment asm = opt.get();
+            // Remove associated questions first to ensure clean FK cascade
+            if (asm.getQuestions() != null && !asm.getQuestions().isEmpty()) {
+                questionRepository.deleteAll(asm.getQuestions());
+                asm.getQuestions().clear();
+            }
+            assignmentRepository.delete(asm);
+            return ResponseEntity.ok(Map.of(
+                "message", "Examination deleted successfully",
+                "id", id,
+                "success", true
+            ));
         }
         return ResponseEntity.notFound().build();
     }

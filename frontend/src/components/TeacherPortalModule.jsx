@@ -30,14 +30,26 @@ import {
   Building,
   Check,
   RefreshCw,
-  Edit2
+  Edit2,
+  Send,
+  FileText,
+  Copy,
+  Eye,
+  Tag,
+  CheckSquare,
+  Share2
 } from 'lucide-react';
+import { decodeJwt } from '../utils/jwt';
 
 const GATEWAY_URL = 'http://localhost:8099/api/teacher-portal';
 const DIRECT_URL = 'http://localhost:8091/api/teacher-portal';
 
 const ATTENDANCE_GATEWAY_URL = 'http://localhost:8099/api/teacher-attendance';
 const ATTENDANCE_DIRECT_URL = 'http://localhost:8094/api/teacher-attendance';
+
+const LESSON_NOTES_GATEWAY_URL = 'http://localhost:8099/api/teacher-lesson-notes';
+const LESSON_NOTES_DIRECT_URL = 'http://localhost:8089/api/teacher-lesson-notes';
+
 
 const PERIOD_TIMINGS = ['9-10 AM', '10-11 AM', '11-12 PM', '12-1 PM (Lunch)', '1-2 PM', '2-3 PM', '3-4 PM', '4-5 PM'];
 const MAX_PERIODS_PER_TEACHER = 7;
@@ -69,13 +81,17 @@ const parsePeriodIndex = (val) => {
   return isNaN(parsed) ? 0 : parsed;
 };
 
-export default function TeacherPortalModule({ user, onLogout, onBack }) {
+export default function TeacherPortalModule({ user, token: propToken, onLogout, onBack }) {
   // Extract Registration / JWT Claims Data
-  const username = user?.username || 'teacher';
-  const email = user?.email || 'teacher@school.com';
-  const firstName = user?.firstName || (user?.name ? user.name.split(' ')[0] : '') || 'Sarah';
-  const lastName = user?.lastName || (user?.name ? user.name.split(' ').slice(1).join(' ') : '') || 'Connor';
-  const rawUserId = user?.userId || user?.user_id || user?.id || 43;
+  const activeJwt = propToken || (typeof localStorage !== 'undefined' ? localStorage.getItem('jwt_token') : '') || '';
+  const decodedJwt = decodeJwt(activeJwt);
+  const isJwtVerified = Boolean(activeJwt && decodedJwt);
+
+  const username = user?.username || decodedJwt?.username || 'teacher';
+  const email = user?.email || decodedJwt?.email || 'teacher@school.com';
+  const firstName = user?.firstName || decodedJwt?.firstName || (user?.name ? user.name.split(' ')[0] : '') || 'Sarah';
+  const lastName = user?.lastName || decodedJwt?.lastName || (user?.name ? user.name.split(' ').slice(1).join(' ') : '') || 'Connor';
+  const rawUserId = user?.userId || user?.user_id || user?.id || decodedJwt?.user_id || decodedJwt?.userId || 43;
   const userIdStr = String(rawUserId).startsWith('Tea_') ? String(rawUserId) : `Tea_${rawUserId}`;
   const fullName = (user?.name || user?.fullName || `${firstName} ${lastName}`).trim();
 
@@ -123,10 +139,172 @@ export default function TeacherPortalModule({ user, onLogout, onBack }) {
   const [attendanceSaveMsg, setAttendanceSaveMsg] = useState('');
   const [attendanceSaveErr, setAttendanceSaveErr] = useState('');
 
+  // Module 4: Teacher Lesson Notes States (teacher-lesson-notes-service, port 8089)
+  const [lessonNotes, setLessonNotes] = useState([]);
+  const [notesLoading, setNotesLoading] = useState(false);
+  const [notesSubmitting, setNotesSubmitting] = useState(false);
+  const [notesSuccessMsg, setNotesSuccessMsg] = useState('');
+  const [notesErrMsg, setNotesErrMsg] = useState('');
+  const [noteForm, setNoteForm] = useState({
+    className: 'Class 10',
+    section: 'A',
+    subject: 'Mathematics',
+    topic: '',
+    notesContent: ''
+  });
+  const [historySearchQuery, setHistorySearchQuery] = useState('');
+  const [historyClassFilter, setHistoryClassFilter] = useState('ALL');
+  const [historySectionFilter, setHistorySectionFilter] = useState('ALL');
+  const [selectedNoteModal, setSelectedNoteModal] = useState(null);
+  const [copiedNoteId, setCopiedNoteId] = useState(null);
+
+  const fetchLessonNotesHistory = async () => {
+    setNotesLoading(true);
+    setNotesErrMsg('');
+    try {
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(activeJwt ? { 'Authorization': `Bearer ${activeJwt}` } : {})
+      };
+
+      let res = await fetch(`http://localhost:8099/api/teacher-lesson-notes/history?teacherName=${encodeURIComponent(fullName)}`, { headers }).catch(() => null);
+      if (!res || !res.ok) {
+        res = await fetch(`http://localhost:8089/api/teacher-lesson-notes/history?teacherName=${encodeURIComponent(fullName)}`, { headers }).catch(() => null);
+      }
+
+      if (res && res.ok) {
+        const data = await res.json();
+        setLessonNotes(data.history || []);
+      } else {
+        let fallbackRes = await fetch(`http://localhost:8089/api/teacher-lesson-notes/all`, { headers }).catch(() => null);
+        if (fallbackRes && fallbackRes.ok) {
+          const allData = await fallbackRes.json();
+          const filtered = (allData.notes || []).filter(n =>
+            !fullName || (n.teacherName && n.teacherName.toLowerCase() === fullName.toLowerCase()) || n.teacherUsername === username
+          );
+          setLessonNotes(filtered.length > 0 ? filtered : (allData.notes || []));
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load lesson notes history:', err);
+      setNotesErrMsg('Could not connect to Lesson Notes service. Ensure port 8089 / Gateway is active.');
+    } finally {
+      setNotesLoading(false);
+    }
+  };
+
+  const handleSendLessonNotes = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!noteForm.notesContent.trim()) {
+      setNotesErrMsg('Notes content cannot be empty. Please enter lecture or study notes.');
+      return;
+    }
+    if (!noteForm.topic.trim()) {
+      setNotesErrMsg('Please specify a lesson topic or chapter title.');
+      return;
+    }
+
+    setNotesSubmitting(true);
+    setNotesErrMsg('');
+    setNotesSuccessMsg('');
+
+    try {
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(activeJwt ? { 'Authorization': `Bearer ${activeJwt}` } : {})
+      };
+
+      const resolvedSubject = noteForm.subject || (teacherSubjects.length > 0 ? teacherSubjects[0].subject : 'Mathematics');
+
+      const payload = {
+        teacherName: fullName,
+        className: noteForm.className,
+        section: noteForm.section,
+        subject: resolvedSubject,
+        topic: noteForm.topic.trim(),
+        notesContent: noteForm.notesContent.trim(),
+        teacherUsername: username,
+        teacherEmail: email
+      };
+
+      let res = await fetch('http://localhost:8099/api/teacher-lesson-notes/send', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload)
+      }).catch(() => null);
+
+      if (!res || !res.ok) {
+        res = await fetch('http://localhost:8089/api/teacher-lesson-notes/send', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(payload)
+        }).catch(() => null);
+      }
+
+      if (res && (res.ok || res.status === 201)) {
+        setNotesSuccessMsg(`Lesson notes successfully published & dispatched to ${noteForm.className} Section ${noteForm.section}!`);
+        setNoteForm(prev => ({ ...prev, topic: '', notesContent: '' }));
+        await fetchLessonNotesHistory();
+      } else {
+        const errData = res ? await res.json().catch(() => ({})) : {};
+        throw new Error(errData.message || errData.error || 'Failed to dispatch notes');
+      }
+    } catch (err) {
+      console.error('Error dispatching notes:', err);
+      setNotesErrMsg(`Dispatch error: ${err.message}`);
+    } finally {
+      setNotesSubmitting(false);
+    }
+  };
+
+  const handleDeleteLessonNote = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this lesson note from history?')) return;
+    try {
+      const headers = {
+        ...(activeJwt ? { 'Authorization': `Bearer ${activeJwt}` } : {})
+      };
+
+      let res = await fetch(`http://localhost:8099/api/teacher-lesson-notes/${id}`, { method: 'DELETE', headers }).catch(() => null);
+      if (!res || !res.ok) {
+        res = await fetch(`http://localhost:8089/api/teacher-lesson-notes/${id}`, { method: 'DELETE', headers }).catch(() => null);
+      }
+
+      if (res && res.ok) {
+        setLessonNotes(prev => prev.filter(n => n.id !== id));
+        setNotesSuccessMsg('Lesson note deleted successfully from history.');
+      }
+    } catch (err) {
+      setNotesErrMsg('Failed to delete lesson note.');
+    }
+  };
+
+  const handleCopyNoteContent = (note) => {
+    const textToCopy = `[${note.subject} • ${note.className} - Section ${note.section}]\nTopic: ${note.topic}\nTeacher: ${note.teacherName}\nDispatched: ${new Date(note.timeOfNotesCreated).toLocaleString()}\n\n${note.notesContent}`;
+    navigator.clipboard.writeText(textToCopy);
+    setCopiedNoteId(note.id);
+    setTimeout(() => setCopiedNoteId(null), 3000);
+  };
+
   const showToast = (msg, type = 'warning') => {
     setNotification({ msg, type });
     setTimeout(() => setNotification(null), 4000);
   };
+
+  useEffect(() => {
+    if (activeTab === 'module4') {
+      fetchLessonNotesHistory();
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (teacherSubjects && teacherSubjects.length > 0) {
+      setNoteForm(prev => ({
+        ...prev,
+        subject: prev.subject || teacherSubjects[0].subject
+      }));
+    }
+  }, [teacherSubjects]);
+
 
   useEffect(() => {
     fetchTeacherProfile();
@@ -606,12 +784,12 @@ export default function TeacherPortalModule({ user, onLogout, onBack }) {
     },
     {
       id: 'module4',
-      title: 'Grading',
-      tag: 'Exams & Marks',
-      subtitle: 'Exam Grading & Assessment',
-      desc: 'Term exam mark entry, report card generation & grade analytics.',
-      icon: <Award size={18} />,
-      theme: { bg: '#fff1f2', color: '#e11d48', border: '#ffe4e6' }
+      title: 'Lesson Notes',
+      tag: 'Class & Section Dispatch',
+      subtitle: 'Class Notes & Study Materials',
+      desc: 'Send class & section-specific lesson notes with subject details and view dispatch history.',
+      icon: <BookOpen size={18} />,
+      theme: { bg: '#eff6ff', color: '#2563eb', border: '#dbeafe' }
     },
     {
       id: 'module5',
@@ -1666,9 +1844,689 @@ export default function TeacherPortalModule({ user, onLogout, onBack }) {
             </div>
           )}
 
+          {/* MODULE 4: TEACHER LESSON NOTES & DISPATCH WORKSPACE */}
+          {activeTab === 'module4' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-20)' }}>
+              
+              {/* Top Banner & Faculty Security Metrics Card */}
+              <div
+                style={{
+                  background: 'var(--color-gallery-white)',
+                  border: '1px solid var(--color-hairline-silver)',
+                  borderRadius: 'var(--radius-cards)',
+                  padding: 'var(--spacing-24) var(--spacing-28)'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <div
+                      style={{
+                        width: '46px',
+                        height: '46px',
+                        borderRadius: '12px',
+                        background: '#eff6ff',
+                        color: 'var(--color-pricing-blue)',
+                        border: '1px solid #dbeafe',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <BookOpen size={22} />
+                    </div>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <h3 style={{ color: 'var(--color-ink)', fontSize: '20px', fontWeight: '600', margin: 0 }}>
+                          Teacher Lesson Notes & Section Dispatch
+                        </h3>
+                        <span
+                          style={{
+                            background: isJwtVerified ? 'rgba(34, 197, 94, 0.1)' : 'var(--color-studio-mist)',
+                            color: isJwtVerified ? '#16a34a' : 'var(--color-slate)',
+                            border: `1px solid ${isJwtVerified ? 'rgba(34, 197, 94, 0.25)' : 'var(--color-hairline-silver)'}`,
+                            padding: '3px 10px',
+                            borderRadius: 'var(--radius-buttons)',
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <ShieldCheck size={12} />
+                          {isJwtVerified ? `JWT Authenticated (${decodedJwt?.role || 'TEACHER'})` : 'JWT Token Ready'}
+                        </span>
+                      </div>
+                      <p style={{ color: 'var(--color-slate)', fontSize: '13px', margin: '4px 0 0 0' }}>
+                        Publish section-targeted lesson notes, study materials, and curriculum guides directly to students.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={fetchLessonNotesHistory}
+                    disabled={notesLoading}
+                    className="btn-apple-outline"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '7px 14px',
+                      fontSize: '12px'
+                    }}
+                  >
+                    <RefreshCw size={13} className={notesLoading ? 'spin-animation' : ''} />
+                    Refresh Notes
+                  </button>
+                </div>
+
+                {/* Faculty Stats Metric Chips */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 'var(--spacing-16)', marginTop: 'var(--spacing-20)', paddingTop: 'var(--spacing-16)', borderTop: '1px solid var(--color-control-gray)' }}>
+                  <div style={{ background: 'var(--color-studio-mist)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-control-gray)' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em' }}>TOTAL NOTES SENT</div>
+                    <div style={{ color: 'var(--color-pricing-blue)', fontWeight: '700', fontSize: '18px', marginTop: '2px' }}>
+                      {lessonNotes.length}
+                    </div>
+                  </div>
+                  <div style={{ background: 'var(--color-studio-mist)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-control-gray)' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em' }}>DISPATCHING TEACHER</div>
+                    <div style={{ color: 'var(--color-ink)', fontWeight: '600', fontSize: '14px', marginTop: '4px' }}>
+                      {fullName}
+                    </div>
+                  </div>
+                  <div style={{ background: 'var(--color-studio-mist)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-control-gray)' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em' }}>PRIMARY SUBJECT</div>
+                    <div style={{ color: 'var(--color-ink)', fontWeight: '600', fontSize: '14px', marginTop: '4px' }}>
+                      {teacherSubjects.length > 0 ? teacherSubjects.map(s => s.subject).join(', ') : (noteForm.subject || 'Mathematics')}
+                    </div>
+                  </div>
+                  <div style={{ background: 'var(--color-studio-mist)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-control-gray)' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em' }}>FACULTY USER ID</div>
+                    <div style={{ color: 'var(--color-ink)', fontWeight: '600', fontSize: '14px', marginTop: '4px' }}>
+                      {userIdStr}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 1: Compose & Send Lesson Notes Card */}
+              <form
+                onSubmit={handleSendLessonNotes}
+                style={{
+                  background: 'var(--color-gallery-white)',
+                  border: '1px solid var(--color-hairline-silver)',
+                  borderRadius: 'var(--radius-cards)',
+                  padding: 'var(--spacing-28)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 'var(--spacing-20)'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                  <h4 style={{ color: 'var(--color-ink)', fontSize: '18px', fontWeight: '600', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Send size={18} color="var(--color-pricing-blue)" />
+                    Send Lesson Notes to Section
+                  </h4>
+                  <span style={{ fontSize: '12px', color: 'var(--color-slate)', fontWeight: '500' }}>
+                    Select targeted class & section, subject, and enter lesson notes
+                  </span>
+                </div>
+
+                {notesSuccessMsg && (
+                  <div style={{ color: '#16a34a', fontSize: '13px', background: 'rgba(34, 197, 94, 0.08)', padding: '12px 16px', borderRadius: '10px', border: '1px solid rgba(34, 197, 94, 0.25)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <CheckCircle size={16} />
+                    <span>{notesSuccessMsg}</span>
+                  </div>
+                )}
+
+                {notesErrMsg && (
+                  <div style={{ color: '#dc2626', fontSize: '13px', background: 'rgba(239, 68, 68, 0.08)', padding: '12px 16px', borderRadius: '10px', border: '1px solid rgba(239, 68, 68, 0.25)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <AlertCircle size={16} />
+                    <span>{notesErrMsg}</span>
+                  </div>
+                )}
+
+                {/* 4-Column Controls: Class, Section, Subject, Topic */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--spacing-16)' }}>
+                  {/* Class Selection */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--color-slate)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Target Class *
+                    </label>
+                    <select
+                      className="apple-input"
+                      value={noteForm.className}
+                      onChange={(e) => setNoteForm(prev => ({ ...prev, className: e.target.value }))}
+                      style={{ padding: '9px 12px', fontSize: '13.5px', borderRadius: '10px', width: '100%' }}
+                    >
+                      {['Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5', 'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10', 'Class 11', 'Class 12'].map(cls => (
+                        <option key={cls} value={cls}>{cls}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Section Selection */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--color-slate)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Target Section *
+                    </label>
+                    <select
+                      className="apple-input"
+                      value={noteForm.section}
+                      onChange={(e) => setNoteForm(prev => ({ ...prev, section: e.target.value }))}
+                      style={{ padding: '9px 12px', fontSize: '13.5px', borderRadius: '10px', width: '100%' }}
+                    >
+                      <option value="A">Section A</option>
+                      <option value="B">Section B</option>
+                      <option value="C">Section C</option>
+                    </select>
+                  </div>
+
+                  {/* Subject Name */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--color-slate)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Subject Name *
+                    </label>
+                    <select
+                      className="apple-input"
+                      value={noteForm.subject}
+                      onChange={(e) => setNoteForm(prev => ({ ...prev, subject: e.target.value }))}
+                      style={{ padding: '9px 12px', fontSize: '13.5px', borderRadius: '10px', width: '100%' }}
+                    >
+                      {teacherSubjects.length > 0
+                        ? Array.from(new Set(teacherSubjects.map(s => s.subject))).map(subj => (
+                            <option key={subj} value={subj}>{subj}</option>
+                          ))
+                        : (
+                          <>
+                            <option value="Mathematics">Mathematics</option>
+                            <option value="Science">Science</option>
+                            <option value="Physics">Physics</option>
+                            <option value="Chemistry">Chemistry</option>
+                            <option value="Biology">Biology</option>
+                            <option value="English">English</option>
+                            <option value="Social Science">Social Science</option>
+                          </>
+                        )
+                      }
+                    </select>
+                  </div>
+
+                  {/* Lesson Topic / Chapter Title */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--color-slate)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Lesson Topic / Title *
+                    </label>
+                    <input
+                      type="text"
+                      className="apple-input"
+                      placeholder="e.g. Chapter 4: Quadratic Equations"
+                      value={noteForm.topic}
+                      onChange={(e) => setNoteForm(prev => ({ ...prev, topic: e.target.value }))}
+                      required
+                      style={{ padding: '9px 12px', fontSize: '13.5px', borderRadius: '10px', width: '100%' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Quick Topic Starter Pills */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--color-slate)', fontWeight: '500' }}>Quick Templates:</span>
+                  {[
+                    { label: 'Formulas & Definitions', snippet: '## Key Formulas & Definitions\n1. Formula: \n2. Definition: \n\n## Practice Problems\n• Problem 1: \n• Problem 2: ' },
+                    { label: 'Lecture Summary', snippet: '## Lecture Summary\n• Key Point 1: \n• Key Point 2: \n• Key Point 3: \n\n## Reading Reference: Chapter Pages ' },
+                    { label: 'Homework & Assignment', snippet: '## Homework Assignment\n• Exercise: \n• Question Numbers: \n• Submission Due Date: Tomorrow morning' },
+                    { label: 'Exam Revision Notes', snippet: '## High-Yield Revision Points\n1. Crucial Rule: \n2. Common Mistakes to Avoid: \n3. Recommended Practice Set: ' }
+                  ].map(tmpl => (
+                    <button
+                      type="button"
+                      key={tmpl.label}
+                      onClick={() => {
+                        setNoteForm(prev => ({
+                          ...prev,
+                          topic: prev.topic || tmpl.label,
+                          notesContent: prev.notesContent ? `${prev.notesContent}\n\n${tmpl.snippet}` : tmpl.snippet
+                        }));
+                      }}
+                      className="btn-apple-outline"
+                      style={{ padding: '3px 10px', fontSize: '11.5px', borderRadius: '14px', background: 'var(--color-studio-mist)' }}
+                    >
+                      + {tmpl.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Notes Content Textarea */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--color-slate)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Lesson Notes Content *
+                    </label>
+                    <span style={{ fontSize: '11px', color: 'var(--color-slate)' }}>
+                      {noteForm.notesContent.length} characters
+                    </span>
+                  </div>
+                  <textarea
+                    className="apple-input"
+                    rows={6}
+                    placeholder="Enter comprehensive lesson notes, explanations, homework instructions, or reading references for this class & section..."
+                    value={noteForm.notesContent}
+                    onChange={(e) => setNoteForm(prev => ({ ...prev, notesContent: e.target.value }))}
+                    required
+                    style={{
+                      padding: '12px 14px',
+                      fontSize: '13.5px',
+                      borderRadius: '10px',
+                      fontFamily: 'inherit',
+                      lineHeight: '1.5',
+                      resize: 'vertical',
+                      minHeight: '130px',
+                      width: '100%',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+
+                {/* Submit Row */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--color-slate)' }}>
+                    <ShieldCheck size={14} color="#16a34a" />
+                    <span>Dispatched under verified teacher credentials: <strong>{fullName}</strong></span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setNoteForm(prev => ({ ...prev, topic: '', notesContent: '' }))}
+                      className="btn-apple-outline"
+                      style={{ padding: '8px 18px', fontSize: '13px' }}
+                    >
+                      Clear
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={notesSubmitting || !noteForm.notesContent.trim() || !noteForm.topic.trim()}
+                      className="btn-pricing-blue"
+                      style={{
+                        padding: '8px 22px',
+                        fontSize: '13px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        borderRadius: 'var(--radius-buttons)'
+                      }}
+                    >
+                      <Send size={14} />
+                      {notesSubmitting ? 'Dispatching Notes...' : `Send Notes to ${noteForm.className} ${noteForm.section}`}
+                    </button>
+                  </div>
+                </div>
+              </form>
+
+              {/* SECTION 2: Teacher Dispatch History Card */}
+              <div
+                style={{
+                  background: 'var(--color-gallery-white)',
+                  border: '1px solid var(--color-hairline-silver)',
+                  borderRadius: 'var(--radius-cards)',
+                  padding: 'var(--spacing-28)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 'var(--spacing-20)'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                  <div>
+                    <h4 style={{ color: 'var(--color-ink)', fontSize: '18px', fontWeight: '600', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Clock size={18} color="var(--color-pricing-blue)" />
+                      Notes Sent by You (Dispatch History)
+                    </h4>
+                    <p style={{ color: 'var(--color-slate)', fontSize: '13px', margin: '4px 0 0 0' }}>
+                      History of all lesson notes sent by <strong>{fullName}</strong>. Real-time synchronized with database.
+                    </p>
+                  </div>
+
+                  <span className="badge-unique" style={{ fontSize: '12px', padding: '4px 12px' }}>
+                    {lessonNotes.length} Total Dispatches
+                  </span>
+                </div>
+
+                {/* Filter and Search Bar */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    flexWrap: 'wrap',
+                    background: 'var(--color-studio-mist)',
+                    padding: '12px 16px',
+                    borderRadius: '12px',
+                    border: '1px solid var(--color-hairline-silver)'
+                  }}
+                >
+                  {/* Search Input */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '1', minWidth: '220px', background: 'var(--color-gallery-white)', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--color-hairline-silver)' }}>
+                    <Search size={14} color="var(--color-slate)" />
+                    <input
+                      type="text"
+                      placeholder="Search notes by topic or content..."
+                      value={historySearchQuery}
+                      onChange={(e) => setHistorySearchQuery(e.target.value)}
+                      style={{ border: 'none', outline: 'none', background: 'transparent', width: '100%', fontSize: '13px', color: 'var(--color-ink)' }}
+                    />
+                    {historySearchQuery && (
+                      <button onClick={() => setHistorySearchQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                        <X size={13} color="var(--color-slate)" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Filter by Class */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--color-slate)', fontWeight: '500' }}>Class:</span>
+                    <select
+                      className="apple-input"
+                      value={historyClassFilter}
+                      onChange={(e) => setHistoryClassFilter(e.target.value)}
+                      style={{ padding: '6px 10px', fontSize: '12.5px', borderRadius: '8px' }}
+                    >
+                      <option value="ALL">All Classes</option>
+                      {['Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5', 'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10', 'Class 11', 'Class 12'].map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Filter by Section */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--color-slate)', fontWeight: '500' }}>Section:</span>
+                    <select
+                      className="apple-input"
+                      value={historySectionFilter}
+                      onChange={(e) => setHistorySectionFilter(e.target.value)}
+                      style={{ padding: '6px 10px', fontSize: '12.5px', borderRadius: '8px' }}
+                    >
+                      <option value="ALL">All Sections</option>
+                      <option value="A">Section A</option>
+                      <option value="B">Section B</option>
+                      <option value="C">Section C</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* History Notes Cards Grid */}
+                {notesLoading ? (
+                  <div style={{ padding: '48px', textAlign: 'center', color: 'var(--color-slate)', fontSize: '14px' }}>
+                    <RefreshCw size={24} className="spin-animation" style={{ margin: '0 auto 12px auto' }} />
+                    Loading lesson notes history...
+                  </div>
+                ) : lessonNotes.filter(note => {
+                    const matchesSearch = !historySearchQuery ||
+                      (note.topic && note.topic.toLowerCase().includes(historySearchQuery.toLowerCase())) ||
+                      (note.notesContent && note.notesContent.toLowerCase().includes(historySearchQuery.toLowerCase())) ||
+                      (note.subject && note.subject.toLowerCase().includes(historySearchQuery.toLowerCase()));
+                    const matchesClass = historyClassFilter === 'ALL' || note.className === historyClassFilter;
+                    const matchesSection = historySectionFilter === 'ALL' || note.section === historySectionFilter;
+                    return matchesSearch && matchesClass && matchesSection;
+                  }).length === 0 ? (
+                  <div
+                    style={{
+                      background: 'var(--color-studio-mist)',
+                      border: '1px dashed var(--color-hairline-silver)',
+                      borderRadius: '16px',
+                      padding: '48px 24px',
+                      textAlign: 'center'
+                    }}
+                  >
+                    <BookOpen size={36} color="var(--color-slate)" style={{ margin: '0 auto 12px auto' }} />
+                    <h5 style={{ fontSize: '16px', fontWeight: '600', color: 'var(--color-ink)', margin: 0 }}>
+                      No Lesson Notes Found in History
+                    </h5>
+                    <p style={{ color: 'var(--color-slate)', fontSize: '13px', maxWidth: '440px', margin: '8px auto 0 auto' }}>
+                      {historySearchQuery || historyClassFilter !== 'ALL' || historySectionFilter !== 'ALL'
+                        ? 'No notes match the current search or filter criteria. Try clearing filters.'
+                        : 'You haven\'t dispatched any lesson notes yet. Use the compose form above to send your first notes to a class section!'}
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--spacing-16)' }}>
+                    {lessonNotes.filter(note => {
+                      const matchesSearch = !historySearchQuery ||
+                        (note.topic && note.topic.toLowerCase().includes(historySearchQuery.toLowerCase())) ||
+                        (note.notesContent && note.notesContent.toLowerCase().includes(historySearchQuery.toLowerCase())) ||
+                        (note.subject && note.subject.toLowerCase().includes(historySearchQuery.toLowerCase()));
+                      const matchesClass = historyClassFilter === 'ALL' || note.className === historyClassFilter;
+                      const matchesSection = historySectionFilter === 'ALL' || note.section === historySectionFilter;
+                      return matchesSearch && matchesClass && matchesSection;
+                    }).map((note) => {
+                      const isCopied = copiedNoteId === note.id;
+                      const noteDate = note.timeOfNotesCreated ? new Date(note.timeOfNotesCreated) : null;
+                      const formattedDate = noteDate
+                        ? noteDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                        : 'Recent';
+
+                      return (
+                        <div
+                          key={note.id}
+                          style={{
+                            background: 'var(--color-gallery-white)',
+                            border: '1px solid var(--color-hairline-silver)',
+                            borderRadius: '14px',
+                            padding: '18px 20px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'space-between',
+                            gap: '12px',
+                            transition: 'all 0.2s ease',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+                          }}
+                        >
+                          {/* Card Top: Badges & Timestamp */}
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '10px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                <span
+                                  style={{
+                                    background: '#eff6ff',
+                                    color: 'var(--color-pricing-blue)',
+                                    border: '1px solid #dbeafe',
+                                    padding: '2px 8px',
+                                    borderRadius: '6px',
+                                    fontSize: '11px',
+                                    fontWeight: '700'
+                                  }}
+                                >
+                                  {note.className} - Sec {note.section}
+                                </span>
+                                <span
+                                  style={{
+                                    background: '#f5f3ff',
+                                    color: '#7c3aed',
+                                    border: '1px solid #ede9fe',
+                                    padding: '2px 8px',
+                                    borderRadius: '6px',
+                                    fontSize: '11px',
+                                    fontWeight: '600'
+                                  }}
+                                >
+                                  {note.subject}
+                                </span>
+                              </div>
+
+                              <span style={{ fontSize: '11px', color: 'var(--color-slate)', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+                                <Clock size={11} />
+                                {formattedDate}
+                              </span>
+                            </div>
+
+                            {/* Topic Title */}
+                            <h5 style={{ color: 'var(--color-ink)', fontSize: '15px', fontWeight: '600', margin: '0 0 8px 0', lineHeight: '1.3' }}>
+                              {note.topic}
+                            </h5>
+
+                            {/* Notes Content Snippet */}
+                            <p
+                              style={{
+                                color: 'var(--color-slate)',
+                                fontSize: '13px',
+                                lineHeight: '1.5',
+                                margin: 0,
+                                whiteSpace: 'pre-wrap',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 3,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden'
+                              }}
+                            >
+                              {note.notesContent}
+                            </p>
+                          </div>
+
+                          {/* Card Footer: Teacher Attribution & Action Buttons */}
+                          <div style={{ borderTop: '1px solid var(--color-control-gray)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                            <div style={{ fontSize: '11.5px', color: 'var(--color-slate)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                              <ShieldCheck size={12} color="#16a34a" />
+                              <span>By: <strong>{note.teacherName}</strong></span>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <button
+                                onClick={() => setSelectedNoteModal(note)}
+                                className="btn-apple-outline"
+                                style={{ padding: '4px 10px', fontSize: '11.5px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                title="View full lesson note"
+                              >
+                                <Eye size={12} />
+                                View
+                              </button>
+                              <button
+                                onClick={() => handleCopyNoteContent(note)}
+                                className="btn-apple-outline"
+                                style={{ padding: '4px 10px', fontSize: '11.5px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                title="Copy note text to clipboard"
+                              >
+                                {isCopied ? <Check size={12} color="#16a34a" /> : <Copy size={12} />}
+                                {isCopied ? 'Copied' : 'Copy'}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteLessonNote(note.id)}
+                                className="btn-apple-outline"
+                                style={{ padding: '4px 8px', fontSize: '11.5px', color: '#dc2626', borderColor: '#fecaca' }}
+                                title="Delete note from history"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Full Note Detail Modal */}
+              {selectedNoteModal && (
+                <div
+                  style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+                    backdropFilter: 'blur(4px)',
+                    zIndex: 9999,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '20px'
+                  }}
+                  onClick={() => setSelectedNoteModal(null)}
+                >
+                  <div
+                    style={{
+                      background: 'var(--color-gallery-white)',
+                      border: '1px solid var(--color-hairline-silver)',
+                      borderRadius: '16px',
+                      padding: '28px',
+                      maxWidth: '650px',
+                      width: '100%',
+                      maxHeight: '85vh',
+                      overflowY: 'auto',
+                      boxShadow: '0 20px 40px rgba(0, 0, 0, 0.18)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '18px'
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                          <span style={{ background: '#eff6ff', color: 'var(--color-pricing-blue)', padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' }}>
+                            {selectedNoteModal.className} - Section {selectedNoteModal.section}
+                          </span>
+                          <span style={{ background: '#f5f3ff', color: '#7c3aed', padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '600' }}>
+                            {selectedNoteModal.subject}
+                          </span>
+                          <span style={{ fontSize: '12px', color: 'var(--color-slate)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Clock size={12} />
+                            {selectedNoteModal.timeOfNotesCreated ? new Date(selectedNoteModal.timeOfNotesCreated).toLocaleString() : 'N/A'}
+                          </span>
+                        </div>
+                        <h4 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: 'var(--color-ink)' }}>
+                          {selectedNoteModal.topic}
+                        </h4>
+                      </div>
+                      <button
+                        onClick={() => setSelectedNoteModal(null)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+                      >
+                        <X size={18} color="var(--color-slate)" />
+                      </button>
+                    </div>
+
+                    <div style={{ padding: '16px', background: 'var(--color-studio-mist)', borderRadius: '12px', border: '1px solid var(--color-hairline-silver)' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', marginBottom: '8px' }}>
+                        Lesson Notes & Study Content:
+                      </div>
+                      <div style={{ whiteSpace: 'pre-wrap', fontSize: '14px', lineHeight: '1.6', color: 'var(--color-ink)', maxHeight: '350px', overflowY: 'auto' }}>
+                        {selectedNoteModal.notesContent}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--color-slate)' }}>
+                        Dispatched by: <strong>{selectedNoteModal.teacherName}</strong>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={() => handleCopyNoteContent(selectedNoteModal)}
+                          className="btn-apple-outline"
+                          style={{ padding: '6px 14px', fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                        >
+                          {copiedNoteId === selectedNoteModal.id ? <Check size={13} color="#16a34a" /> : <Copy size={13} />}
+                          {copiedNoteId === selectedNoteModal.id ? 'Copied to Clipboard' : 'Copy Content'}
+                        </button>
+                        <button
+                          onClick={() => setSelectedNoteModal(null)}
+                          className="btn-pricing-blue"
+                          style={{ padding: '6px 18px', fontSize: '12.5px' }}
+                        >
+                          Close
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* OTHER MODULES WORKSPACE PLACEHOLDERS */}
           {modulesList.map((mod) => {
-            if (mod.id === 'module1' || mod.id === 'module2' || mod.id === 'module3' || activeTab !== mod.id) return null;
+            if (mod.id === 'module1' || mod.id === 'module2' || mod.id === 'module3' || mod.id === 'module4' || activeTab !== mod.id) return null;
             return (
               <div key={mod.id} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-20)' }}>
                 <div

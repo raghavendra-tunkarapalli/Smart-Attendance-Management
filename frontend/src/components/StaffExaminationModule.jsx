@@ -62,6 +62,11 @@ export default function StaffExaminationModule({ user, showToast }) {
   const [examDetailLoading, setExamDetailLoading] = useState(false);
   const [modalTab, setModalTab] = useState('questions'); // 'questions' | 'overview' | 'student-paper'
 
+  // Action status and confirmation modal states
+  const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [examToDelete, setExamToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Create Exam Form state
   const [newTitle, setNewTitle] = useState('');
   const [newSubject, setNewSubject] = useState('Mathematics');
@@ -154,80 +159,100 @@ export default function StaffExaminationModule({ user, showToast }) {
   const handleToggleResults = async (examId, currentStatus, e) => {
     if (e) e.stopPropagation();
     const newStatus = !currentStatus;
+    setActionLoadingId(examId);
 
     try {
-      let res = await fetch(`${GATEWAY_URL}/assignments/${examId}/release-results?released=${newStatus}`, {
-        method: 'PUT'
-      }).catch(() => null);
+      const endpoints = [
+        `${GATEWAY_URL}/assignments/${examId}/release-results?released=${newStatus}`,
+        `${GATEWAY_URL}/assignments/${examId}/release-results`,
+        `${GATEWAY_URL}/assignments/${examId}/toggle-status?released=${newStatus}`,
+        `${DIRECT_URL}/assignments/${examId}/release-results?released=${newStatus}`,
+        `${DIRECT_URL}/assignments/${examId}/release-results`
+      ];
 
-      if (!res || !res.ok) {
-        res = await fetch(`${GATEWAY_URL}/assignments/${examId}/release-results?released=${newStatus}`, {
-          method: 'POST'
-        }).catch(() => null);
+      let success = false;
+      for (const endpoint of endpoints) {
+        for (const method of ['PUT', 'POST']) {
+          try {
+            const res = await fetch(endpoint, {
+              method,
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ released: newStatus })
+            });
+            if (res && res.ok) {
+              success = true;
+              break;
+            }
+          } catch (_) {}
+        }
+        if (success) break;
       }
 
-      if (!res || !res.ok) {
-        res = await fetch(`${DIRECT_URL}/assignments/${examId}/release-results?released=${newStatus}`, {
-          method: 'PUT'
-        }).catch(() => null);
-      }
-
-      if (!res || !res.ok) {
-        res = await fetch(`${DIRECT_URL}/assignments/${examId}/release-results?released=${newStatus}`, {
-          method: 'POST'
-        }).catch(() => null);
-      }
-
-      if (res && res.ok) {
+      if (success) {
         if (showToast) {
-          showToast(newStatus ? 'Exam results published to student portal!' : 'Exam results hidden (Draft mode).', 'success');
+          showToast(newStatus ? 'Exam published to student portal!' : 'Exam unpublished (saved in Draft mode).', 'success');
         }
         setAssignments(prev => prev.map(a => a.id === examId ? { ...a, resultsReleased: newStatus } : a));
         if (selectedExam && selectedExam.id === examId) {
           setSelectedExam(prev => ({ ...prev, resultsReleased: newStatus }));
         }
       } else {
-        if (showToast) showToast('Failed to update result release status.', 'error');
+        if (showToast) showToast('Failed to update result release status. Please check backend connection.', 'error');
       }
     } catch (err) {
       console.error('Error toggling release status:', err);
       if (showToast) showToast('Network error updating results.', 'error');
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
-  const handleDeleteExam = async (examId, title, e) => {
+  const handleDeleteExam = (examId, title, e) => {
     if (e) e.stopPropagation();
-    if (!window.confirm(`Are you sure you want to permanently delete examination "${title}" and all its question recordings?`)) {
-      return;
-    }
+    setExamToDelete({ id: examId, title: title });
+  };
 
+  const executeDeleteExam = async (examId, title) => {
+    setIsDeleting(true);
     try {
-      let res = await fetch(`${GATEWAY_URL}/assignments/${examId}`, { method: 'DELETE' }).catch(() => null);
-      
-      if (!res || !res.ok) {
-        res = await fetch(`${GATEWAY_URL}/assignments/${examId}/delete`, { method: 'POST' }).catch(() => null);
+      const endpoints = [
+        { url: `${GATEWAY_URL}/assignments/${examId}`, method: 'DELETE' },
+        { url: `${GATEWAY_URL}/assignments/${examId}/delete`, method: 'POST' },
+        { url: `${DIRECT_URL}/assignments/${examId}`, method: 'DELETE' },
+        { url: `${DIRECT_URL}/assignments/${examId}/delete`, method: 'POST' },
+        { url: `${GATEWAY_URL}/assignments/${examId}/delete`, method: 'GET' }
+      ];
+
+      let success = false;
+      for (const req of endpoints) {
+        try {
+          const res = await fetch(req.url, {
+            method: req.method,
+            headers: { 'Content-Type': 'application/json' }
+          });
+          if (res && res.ok) {
+            success = true;
+            break;
+          }
+        } catch (_) {}
+        if (success) break;
       }
 
-      if (!res || !res.ok) {
-        res = await fetch(`${DIRECT_URL}/assignments/${examId}`, { method: 'DELETE' }).catch(() => null);
-      }
-
-      if (!res || !res.ok) {
-        res = await fetch(`${DIRECT_URL}/assignments/${examId}/delete`, { method: 'POST' }).catch(() => null);
-      }
-
-      if (res && res.ok) {
+      if (success) {
         if (showToast) showToast(`Examination "${title}" deleted successfully.`, 'info');
         setAssignments(prev => prev.filter(a => a.id !== examId));
         if (selectedExam && selectedExam.id === examId) {
           setSelectedExam(null);
         }
+        setExamToDelete(null);
       } else {
-        if (showToast) showToast('Failed to delete examination.', 'error');
+        if (showToast) showToast('Failed to delete examination. Please try again.', 'error');
       }
     } catch (err) {
       console.error('Error deleting exam:', err);
       if (showToast) showToast('Network error deleting examination.', 'error');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -754,21 +779,31 @@ export default function StaffExaminationModule({ user, showToast }) {
 
                         <button
                           onClick={(e) => handleToggleResults(exam.id, exam.resultsReleased, e)}
+                          disabled={actionLoadingId === exam.id}
                           className="btn-outlined-explore"
                           style={{
                             padding: '6px 12px',
                             fontSize: '12px',
-                            color: exam.resultsReleased ? 'var(--color-success)' : 'var(--color-slate)'
+                            color: exam.resultsReleased ? '#d97706' : 'var(--color-success)',
+                            borderColor: exam.resultsReleased ? '#fde68a' : '#bbf7d0',
+                            background: exam.resultsReleased ? '#fffbeb' : '#f0fdf4',
+                            fontWeight: 600,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
                           }}
-                          title={exam.resultsReleased ? 'Hide from students' : 'Publish to student portal'}
+                          title={exam.resultsReleased ? 'Unpublish / Hide from students' : 'Publish to student portal'}
                         >
+                          {actionLoadingId === exam.id ? (
+                            <RefreshCw size={12} className="spin" />
+                          ) : null}
                           {exam.resultsReleased ? 'Unpublish' : 'Publish'}
                         </button>
 
                         <button
                           onClick={(e) => handleDeleteExam(exam.id, exam.assignmentTitle, e)}
                           className="btn-outlined-explore"
-                          style={{ padding: '6px 8px', color: 'var(--color-error)' }}
+                          style={{ padding: '6px 8px', color: 'var(--color-error)', borderColor: '#fecdd3' }}
                           title="Delete Examination"
                         >
                           <Trash2 size={14} />
@@ -834,15 +869,29 @@ export default function StaffExaminationModule({ user, showToast }) {
                               </button>
                               <button
                                 onClick={(e) => handleToggleResults(exam.id, exam.resultsReleased, e)}
+                                disabled={actionLoadingId === exam.id}
                                 className="btn-outlined-explore"
-                                style={{ padding: '5px 8px', fontSize: '12px' }}
+                                style={{
+                                  padding: '5px 8px',
+                                  fontSize: '12px',
+                                  color: exam.resultsReleased ? '#d97706' : 'var(--color-success)',
+                                  borderColor: exam.resultsReleased ? '#fde68a' : '#bbf7d0',
+                                  background: exam.resultsReleased ? '#fffbeb' : '#f0fdf4',
+                                  fontWeight: 600,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
                               >
+                                {actionLoadingId === exam.id ? (
+                                  <RefreshCw size={12} className="spin" />
+                                ) : null}
                                 {exam.resultsReleased ? 'Unpublish' : 'Publish'}
                               </button>
                               <button
                                 onClick={(e) => handleDeleteExam(exam.id, exam.assignmentTitle, e)}
                                 className="btn-outlined-explore"
-                                style={{ padding: '5px 6px', color: 'var(--color-error)' }}
+                                style={{ padding: '5px 6px', color: 'var(--color-error)', borderColor: '#fecdd3' }}
                                 title="Delete Examination"
                               >
                                 <Trash2 size={13} />
@@ -1275,9 +1324,21 @@ export default function StaffExaminationModule({ user, showToast }) {
 
                 <button
                   onClick={(e) => handleToggleResults(selectedExam.id, selectedExam.resultsReleased, e)}
+                  disabled={actionLoadingId === selectedExam.id}
                   className="btn-outlined-explore"
-                  style={{ color: selectedExam.resultsReleased ? 'var(--color-success)' : 'var(--color-slate)' }}
+                  style={{
+                    color: selectedExam.resultsReleased ? '#d97706' : 'var(--color-success)',
+                    borderColor: selectedExam.resultsReleased ? '#fde68a' : '#bbf7d0',
+                    background: selectedExam.resultsReleased ? '#fffbeb' : '#f0fdf4',
+                    fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
                 >
+                  {actionLoadingId === selectedExam.id ? (
+                    <RefreshCw size={13} className="spin" />
+                  ) : null}
                   {selectedExam.resultsReleased ? 'Unpublish' : 'Publish'}
                 </button>
 
@@ -1498,6 +1559,67 @@ export default function StaffExaminationModule({ user, showToast }) {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE CONFIRMATION MODAL */}
+      {examToDelete && (
+        <div
+          className="modal-backdrop-explore"
+          style={{ zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => !isDeleting && setExamToDelete(null)}
+        >
+          <div
+            className="modal-container-apple"
+            style={{ maxWidth: '440px', width: '90%', padding: '24px', borderRadius: '16px', background: '#fff', boxShadow: '0 20px 40px rgba(0,0,0,0.18)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', marginBottom: '16px' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Trash2 size={20} color="var(--color-error)" />
+              </div>
+              <div>
+                <h3 style={{ margin: '0 0 6px 0', fontSize: '17px', fontWeight: 600, color: 'var(--color-ink)' }}>
+                  Delete Examination?
+                </h3>
+                <p style={{ margin: 0, fontSize: '13.5px', color: 'var(--color-slate)', lineHeight: 1.5 }}>
+                  Are you sure you want to permanently delete <strong>"{examToDelete.title}"</strong>? All questions and recorded answers will be removed.
+                </p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setExamToDelete(null)}
+                className="btn-apple-outline"
+                style={{ padding: '8px 16px', fontSize: '13px' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => executeDeleteExam(examToDelete.id, examToDelete.title)}
+                style={{
+                  background: '#ef4444',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '8px 18px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: isDeleting ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                {isDeleting ? <RefreshCw size={14} className="spin" /> : <Trash2 size={14} />}
+                {isDeleting ? 'Deleting...' : 'Delete Exam'}
+              </button>
             </div>
           </div>
         </div>
