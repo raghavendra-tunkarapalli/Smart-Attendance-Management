@@ -1,6 +1,7 @@
 param(
     [switch]$NoWait,
-    [switch]$Watch
+    [switch]$Watch,
+    [switch]$Rebuild
 )
 
 # Create logs directory if it doesn't exist
@@ -13,8 +14,8 @@ Write-Host "==========================================================" -Foregro
 Write-Host "  Launching Smart Attendance Management Services Quickly   " -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
-$jvmArgs = "-Xms64m -Xmx220m -XX:TieredStopAtLevel=1"
-$mvnArgs = "spring-boot:run -DskipTests -Dspring-boot.run.jvmArguments=`"$jvmArgs`""
+# High-efficiency JVM startup flags: Tier 1 C1 compiler, low heap overhead, SerialGC, lazy initialization
+$jvmArgs = "-XX:TieredStopAtLevel=1 -Xms64m -Xmx200m -XX:+UseSerialGC -Dspring.main.lazy-initialization=true -Djava.security.egd=file:/dev/./urandom"
 
 # Service definitions: Name, Path, Port
 $services = @(
@@ -41,68 +42,95 @@ $services = @(
     @{ Name = "student-study-resource-service"; Path = "backend/student-study-resource-service"; Port = 8100 }
 )
 
-# 1. Start Frontend (Vite) immediately
+# 0. Check Database status (port 3306)
+$dbConn = Get-NetTCPConnection -LocalPort 3306 -State Listen -ErrorAction SilentlyContinue
+if ($dbConn) {
+    Write-Host "[Database] MySQL is active and listening on port 3306." -ForegroundColor Green
+} else {
+    Write-Host "[Database] WARNING: MySQL is not listening on port 3306. Check your MySQL service." -ForegroundColor Red
+}
+
+# 1. Ensure backend JARs are compiled in parallel
+$missingJars = 0
+foreach ($svc in $services) {
+    $jarPath = Join-Path $PSScriptRoot "$($svc.Path)/target/$($svc.Name)-0.0.1-SNAPSHOT.jar"
+    if (-not (Test-Path $jarPath)) { $missingJars++ }
+}
+
+if ($missingJars -gt 0 -or $Rebuild) {
+    Write-Host "[Build] Compiling all 21 microservices concurrently (-T 1C)..." -ForegroundColor Yellow
+    mvn -f (Join-Path $PSScriptRoot "backend/pom.xml") package -DskipTests -T 1C | Out-Null
+    Write-Host "[Build] Build complete!" -ForegroundColor Green
+} else {
+    Write-Host "[Build] Pre-compiled JARs verified for all 21 services. Skipping Maven build." -ForegroundColor Green
+}
+
+# 2. Start Frontend (Vite)
 $feConn = Get-NetTCPConnection -LocalPort 5173 -State Listen -ErrorAction SilentlyContinue
 if (-not $feConn) {
-    Write-Host "[1/3] Starting Frontend (Vite) on port 5173..." -ForegroundColor Green
+    Write-Host "[Frontend] Starting React (Vite) on port 5173..." -ForegroundColor Green
     $frontendLogOut = Join-Path $LogDir "frontend-out.log"
     $frontendLogErr = Join-Path $LogDir "frontend-err.log"
     Start-Process -FilePath "npm.cmd" -ArgumentList "run", "dev" -WorkingDirectory (Join-Path $PSScriptRoot "frontend") -NoNewWindow -RedirectStandardOutput $frontendLogOut -RedirectStandardError $frontendLogErr
 } else {
-    Write-Host "[1/3] Frontend is already running on port 5173." -ForegroundColor DarkGreen
+    Write-Host "[Frontend] Already running on port 5173." -ForegroundColor DarkGreen
 }
 
-# 2. Start Eureka Server immediately
+# 3. Start Eureka Server
 $eurekaConn = Get-NetTCPConnection -LocalPort 8761 -State Listen -ErrorAction SilentlyContinue
 if (-not $eurekaConn) {
-    Write-Host "[2/3] Starting Eureka Server on port 8761..." -ForegroundColor Yellow
+    Write-Host "[Eureka] Starting Eureka Server on port 8761..." -ForegroundColor Yellow
     $eurekaLogOut = Join-Path $LogDir "eureka-server-out.log"
     $eurekaLogErr = Join-Path $LogDir "eureka-server-err.log"
-    Start-Process -FilePath "mvn.cmd" -ArgumentList $mvnArgs -WorkingDirectory (Join-Path $PSScriptRoot "backend/eureka-server") -NoNewWindow -RedirectStandardOutput $eurekaLogOut -RedirectStandardError $eurekaLogErr
+    $eurekaJar = Join-Path $PSScriptRoot "backend/eureka-server/target/eureka-server-0.0.1-SNAPSHOT.jar"
+    
+    Start-Process -FilePath "java.exe" -ArgumentList "$jvmArgs -jar `"$eurekaJar`"" -WorkingDirectory (Join-Path $PSScriptRoot "backend/eureka-server") -NoNewWindow -RedirectStandardOutput $eurekaLogOut -RedirectStandardError $eurekaLogErr
 
-    Write-Host "Waiting for Eureka Server to listen on port 8761..." -ForegroundColor DarkYellow
+    Write-Host "[Eureka] Waiting for Eureka Server to initialize on port 8761..." -ForegroundColor DarkYellow
     $eurekaWait = 0
     while ($eurekaWait -lt 30) {
-        Start-Sleep -Seconds 1
+        Start-Sleep -Milliseconds 500
         $eurekaConn = Get-NetTCPConnection -LocalPort 8761 -State Listen -ErrorAction SilentlyContinue
         if ($eurekaConn) { 
-            Write-Host "Eureka Server is now ONLINE!" -ForegroundColor Green
+            Write-Host "[Eureka] Server is now ONLINE on port 8761!" -ForegroundColor Green
             break 
         }
         $eurekaWait++
     }
 } else {
-    Write-Host "[2/3] Eureka Server is already running on port 8761." -ForegroundColor Green
+    Write-Host "[Eureka] Already running on port 8761." -ForegroundColor Green
 }
 
-# 3. Start API Gateway and all backend microservices
-Write-Host "[3/3] Launching API Gateway and microservices..." -ForegroundColor Cyan
+# 4. Start API Gateway and all microservices in parallel
+Write-Host "[Microservices] Launching API Gateway and 19 domain services in parallel..." -ForegroundColor Cyan
 $otherServices = $services | Where-Object { $_.Name -ne "eureka-server" }
+
 foreach ($svc in $otherServices) {
     $existing = Get-NetTCPConnection -LocalPort $svc.Port -State Listen -ErrorAction SilentlyContinue
     if (-not $existing) {
-        Write-Host "  -> Spawning $($svc.Name) (: $($svc.Port))..." -ForegroundColor Yellow
         $logOut = Join-Path $LogDir "$($svc.Name)-out.log"
         $logErr = Join-Path $LogDir "$($svc.Name)-err.log"
-        Start-Process -FilePath "mvn.cmd" -ArgumentList $mvnArgs -WorkingDirectory (Join-Path $PSScriptRoot $svc.Path) -NoNewWindow -RedirectStandardOutput $logOut -RedirectStandardError $logErr
-        Start-Sleep -Milliseconds 450
+        $jarPath = Join-Path $PSScriptRoot "$($svc.Path)/target/$($svc.Name)-0.0.1-SNAPSHOT.jar"
+        
+        Write-Host "  -> Spawning $($svc.Name) (: $($svc.Port))..." -ForegroundColor Yellow
+        Start-Process -FilePath "java.exe" -ArgumentList "$jvmArgs -jar `"$jarPath`"" -WorkingDirectory (Join-Path $PSScriptRoot $svc.Path) -NoNewWindow -RedirectStandardOutput $logOut -RedirectStandardError $logErr
     } else {
         Write-Host "  -> $($svc.Name) already running (: $($svc.Port))" -ForegroundColor DarkGreen
     }
 }
 
-Write-Host "`nAll processes spawned successfully!" -ForegroundColor Green
+Write-Host "`nAll processes spawned successfully in parallel!" -ForegroundColor Green
 
 if ($NoWait) {
     Write-Host "Services are starting up in background. Check 'logs' folder for output." -ForegroundColor Cyan
 } else {
     Write-Host "Monitoring service ports for readiness..." -ForegroundColor Cyan
-    $maxCheck = 20
+    $maxCheck = 25
     $iteration = 0
     $allPorts = @(8761, 8099, 5173) + ($otherServices | ForEach-Object { $_.Port })
 
     while ($iteration -lt $maxCheck) {
-        Start-Sleep -Seconds 2
+        Start-Sleep -Seconds 1
         $activeConns = Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalPort -in $allPorts }
         $activePorts = $activeConns | Select-Object -ExpandProperty LocalPort -Unique
         $readyCount = if ($activePorts) { ($activePorts | Measure-Object).Count } else { 0 }
@@ -130,8 +158,3 @@ if (-not $NoWait) {
     Write-Host "Services are running. Launcher will remain active in background." -ForegroundColor Cyan
     while ($true) { Start-Sleep -Seconds 3600 }
 }
-
-
-
-
-

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.school</groupId>
+    <artifactId>smart-attendance-backend</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+    <name>Smart Attendance Backend Aggregator</name>
+
+    <modules>
+        <module>eureka-server</module>
+        <module>api-gateway</module>
+        <module>registration-service</module>
+        <module>admission-service</module>
+        <module>student-enquire-service</module>
+        <module>parent-enquiry-service</module>
+        <module>admin-enquiries-service</module>
+        <module>admin-admissions-service</module>
+        <module>teacher-enquiry-service</module>
+        <module>staff-enquiry-service</module>
+        <module>student-portal-service</module>
+        <module>teacher-portal-service</module>
+        <module>staff-portal-service</module>
+        <module>staff-student-service</module>
+        <module>teacher-attendance-service</module>
+        <module>student-schedule-service</module>
+        <module>staff-examination-service</module>
+        <module>student-assignment-service</module>
+        <module>student-examination-service</module>
+        <module>teacher-lesson-notes-service</module>
+        <module>student-study-resource-service</module>
+    </modules>
+</project>

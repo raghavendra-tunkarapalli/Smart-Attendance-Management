@@ -1,0 +1,552 @@
+networks:
+  smart-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+
+services:
+  # ==========================================
+  # 1. Database Tier: MySQL 8.0
+  # ==========================================
+  mysql:
+    image: mysql:8.0
+    container_name: smart-attendance-mysql
+    restart: unless-stopped
+    networks:
+      - smart-network
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Theraghu@5e8}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-school_management_system}
+    ports:
+      - "${MYSQL_HOST_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pTheraghu@5e8"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 4s
+
+  # ==========================================
+  # 2. Service Discovery: Eureka Server
+  # ==========================================
+  eureka-server:
+    build:
+      context: ./backend/eureka-server
+      dockerfile: Dockerfile
+    image: smart-attendance/eureka-server:latest
+    container_name: smart-attendance-eureka
+    restart: unless-stopped
+    networks:
+      - smart-network
+    ports:
+      - "8761:8761"
+    environment:
+      JAVA_OPTS: "-XX:TieredStopAtLevel=1 -Xms64m -Xmx200m -XX:+UseSerialGC -Dspring.main.lazy-initialization=true -Djava.security.egd=file:/dev/./urandom"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8761/eureka/apps || exit 1"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
+
+  # ==========================================
+  # 3. API Gateway: Spring Cloud Gateway
+  # ==========================================
+  api-gateway:
+    build:
+      context: ./backend/api-gateway
+      dockerfile: Dockerfile
+    image: smart-attendance/api-gateway:latest
+    container_name: smart-attendance-gateway
+    restart: unless-stopped
+    networks:
+      - smart-network
+    ports:
+      - "8099:8099"
+    environment:
+      JAVA_OPTS: "-XX:TieredStopAtLevel=1 -Xms64m -Xmx220m -XX:+UseSerialGC -Dspring.main.lazy-initialization=true -Djava.security.egd=file:/dev/./urandom"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: api-gateway
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
+  # ==========================================
+  # 4. Domain Microservices (Parallel Launch)
+  # ==========================================
+  registration-service:
+    build:
+      context: ./backend/registration-service
+      dockerfile: Dockerfile
+    image: smart-attendance/registration-service:latest
+    container_name: smart-attendance-registration
+    restart: unless-stopped
+    networks:
+      - smart-network
+    ports:
+      - "8081:8081"
+    environment:
+      JAVA_OPTS: "-XX:TieredStopAtLevel=1 -Xms64m -Xmx200m -XX:+UseSerialGC -Dspring.main.lazy-initialization=true"
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/school_management_system?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Theraghu@5e8}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: registration-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+
+  admission-service:
+    build:
+      context: ./backend/admission-service
+      dockerfile: Dockerfile
+    image: smart-attendance/admission-service:latest
+    container_name: smart-attendance-admission
+    restart: unless-stopped
+    networks:
+      - smart-network
+    ports:
+      - "8082:8082"
+    environment:
+      JAVA_OPTS: "-XX:TieredStopAtLevel=1 -Xms64m -Xmx200m -XX:+UseSerialGC -Dspring.main.lazy-initialization=true"
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/school_management_system?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Theraghu@5e8}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: admission-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+
+  student-enquire-service:
+    build:
+      context: ./backend/student-enquire-service
+      dockerfile: Dockerfile
+    image: smart-attendance/student-enquire-service:latest
+    container_name: smart-attendance-student-enquire
+    restart: unless-stopped
+    networks:
+      - smart-network
+    ports:
+      - "8083:8083"
+    environment:
+      JAVA_OPTS: "-XX:TieredStopAtLevel=1 -Xms64m -Xmx200m -XX:+UseSerialGC -Dspring.main.lazy-initialization=true"
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/school_management_system?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Theraghu@5e8}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: student-enquire-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+
+  parent-enquiry-service:
+    build:
+      context: ./backend/parent-enquiry-service
+      dockerfile: Dockerfile
+    image: smart-attendance/parent-enquiry-service:latest
+    container_name: smart-attendance-parent-enquiry
+    restart: unless-stopped
+    networks:
+      - smart-network
+    ports:
+      - "8084:8084"
+    environment:
+      JAVA_OPTS: "-XX:TieredStopAtLevel=1 -Xms64m -Xmx200m -XX:+UseSerialGC -Dspring.main.lazy-initialization=true"
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/school_management_system?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Theraghu@5e8}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: parent-enquiry-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+
+  admin-enquiries-service:
+    build:
+      context: ./backend/admin-enquiries-service
+      dockerfile: Dockerfile
+    image: smart-attendance/admin-enquiries-service:latest
+    container_name: smart-attendance-admin-enquiries
+    restart: unless-stopped
+    networks:
+      - smart-network
+    ports:
+      - "8085:8085"
+    environment:
+      JAVA_OPTS: "-XX:TieredStopAtLevel=1 -Xms64m -Xmx200m -XX:+UseSerialGC -Dspring.main.lazy-initialization=true"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: admin-enquiries-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
+  admin-admissions-service:
+    build:
+      context: ./backend/admin-admissions-service
+      dockerfile: Dockerfile
+    image: smart-attendance/admin-admissions-service:latest
+    container_name: smart-attendance-admin-admissions
+    restart: unless-stopped
+    networks:
+      - smart-network
+    ports:
+      - "8086:8086"
+    environment:
+      JAVA_OPTS: "-XX:TieredStopAtLevel=1 -Xms64m -Xmx200m -XX:+UseSerialGC -Dspring.main.lazy-initialization=true"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: admin-admissions-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
+  teacher-enquiry-service:
+    build:
+      context: ./backend/teacher-enquiry-service
+      dockerfile: Dockerfile
+    image: smart-attendance/teacher-enquiry-service:latest
+    container_name: smart-attendance-teacher-enquiry
+    restart: unless-stopped
+    networks:
+      - smart-network
+    ports:
+      - "8087:8087"
+    environment:
+      JAVA_OPTS: "-XX:TieredStopAtLevel=1 -Xms64m -Xmx200m -XX:+UseSerialGC -Dspring.main.lazy-initialization=true"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: teacher-enquiry-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
+  staff-enquiry-service:
+    build:
+      context: ./backend/staff-enquiry-service
+      dockerfile: Dockerfile
+    image: smart-attendance/staff-enquiry-service:latest
+    container_name: smart-attendance-staff-enquiry
+    restart: unless-stopped
+    networks:
+      - smart-network
+    ports:
+      - "8088:8088"
+    environment:
+      JAVA_OPTS: "-XX:TieredStopAtLevel=1 -Xms64m -Xmx200m -XX:+UseSerialGC -Dspring.main.lazy-initialization=true"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: staff-enquiry-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
+  teacher-lesson-notes-service:
+    build:
+      context: ./backend/teacher-lesson-notes-service
+      dockerfile: Dockerfile
+    image: smart-attendance/teacher-lesson-notes-service:latest
+    container_name: smart-attendance-teacher-lesson-notes
+    restart: unless-stopped
+    networks:
+      - smart-network
+    ports:
+      - "8089:8089"
+    environment:
+      JAVA_OPTS: "-XX:TieredStopAtLevel=1 -Xms64m -Xmx200m -XX:+UseSerialGC -Dspring.main.lazy-initialization=true"
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/school_management_system?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Theraghu@5e8}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: teacher-lesson-notes-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+
+  student-portal-service:
+    build:
+      context: ./backend/student-portal-service
+      dockerfile: Dockerfile
+    image: smart-attendance/student-portal-service:latest
+    container_name: smart-attendance-student-portal
+    restart: unless-stopped
+    networks:
+      - smart-network
+    ports:
+      - "8090:8090"
+    environment:
+      JAVA_OPTS: "-XX:TieredStopAtLevel=1 -Xms64m -Xmx200m -XX:+UseSerialGC -Dspring.main.lazy-initialization=true"
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/school_management_system?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Theraghu@5e8}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: student-portal-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+
+  teacher-portal-service:
+    build:
+      context: ./backend/teacher-portal-service
+      dockerfile: Dockerfile
+    image: smart-attendance/teacher-portal-service:latest
+    container_name: smart-attendance-teacher-portal
+    restart: unless-stopped
+    networks:
+      - smart-network
+    ports:
+      - "8091:8091"
+    environment:
+      JAVA_OPTS: "-XX:TieredStopAtLevel=1 -Xms64m -Xmx200m -XX:+UseSerialGC -Dspring.main.lazy-initialization=true"
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/school_management_system?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Theraghu@5e8}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: teacher-portal-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+
+  staff-portal-service:
+    build:
+      context: ./backend/staff-portal-service
+      dockerfile: Dockerfile
+    image: smart-attendance/staff-portal-service:latest
+    container_name: smart-attendance-staff-portal
+    restart: unless-stopped
+    networks:
+      - smart-network
+    ports:
+      - "8092:8092"
+    environment:
+      JAVA_OPTS: "-XX:TieredStopAtLevel=1 -Xms64m -Xmx200m -XX:+UseSerialGC -Dspring.main.lazy-initialization=true"
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/school_management_system?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Theraghu@5e8}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: staff-portal-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+
+  staff-student-service:
+    build:
+      context: ./backend/staff-student-service
+      dockerfile: Dockerfile
+    image: smart-attendance/staff-student-service:latest
+    container_name: smart-attendance-staff-student
+    restart: unless-stopped
+    networks:
+      - smart-network
+    ports:
+      - "8093:8093"
+    environment:
+      JAVA_OPTS: "-XX:TieredStopAtLevel=1 -Xms64m -Xmx200m -XX:+UseSerialGC -Dspring.main.lazy-initialization=true"
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/school_management_system?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Theraghu@5e8}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: staff-student-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+
+  teacher-attendance-service:
+    build:
+      context: ./backend/teacher-attendance-service
+      dockerfile: Dockerfile
+    image: smart-attendance/teacher-attendance-service:latest
+    container_name: smart-attendance-teacher-attendance
+    restart: unless-stopped
+    networks:
+      - smart-network
+    ports:
+      - "8094:8094"
+    environment:
+      JAVA_OPTS: "-XX:TieredStopAtLevel=1 -Xms64m -Xmx200m -XX:+UseSerialGC -Dspring.main.lazy-initialization=true"
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/school_management_system?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Theraghu@5e8}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: teacher-attendance-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+
+  student-schedule-service:
+    build:
+      context: ./backend/student-schedule-service
+      dockerfile: Dockerfile
+    image: smart-attendance/student-schedule-service:latest
+    container_name: smart-attendance-student-schedule
+    restart: unless-stopped
+    networks:
+      - smart-network
+    ports:
+      - "8095:8095"
+    environment:
+      JAVA_OPTS: "-XX:TieredStopAtLevel=1 -Xms64m -Xmx200m -XX:+UseSerialGC -Dspring.main.lazy-initialization=true"
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/school_management_system?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Theraghu@5e8}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: student-schedule-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+
+  staff-examination-service:
+    build:
+      context: ./backend/staff-examination-service
+      dockerfile: Dockerfile
+    image: smart-attendance/staff-examination-service:latest
+    container_name: smart-attendance-staff-examination
+    restart: unless-stopped
+    networks:
+      - smart-network
+    ports:
+      - "8096:8096"
+    environment:
+      JAVA_OPTS: "-XX:TieredStopAtLevel=1 -Xms64m -Xmx200m -XX:+UseSerialGC -Dspring.main.lazy-initialization=true"
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/school_management_system?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Theraghu@5e8}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: staff-examination-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+
+  student-assignment-service:
+    build:
+      context: ./backend/student-assignment-service
+      dockerfile: Dockerfile
+    image: smart-attendance/student-assignment-service:latest
+    container_name: smart-attendance-student-assignment
+    restart: unless-stopped
+    networks:
+      - smart-network
+    ports:
+      - "8097:8097"
+    environment:
+      JAVA_OPTS: "-XX:TieredStopAtLevel=1 -Xms64m -Xmx200m -XX:+UseSerialGC -Dspring.main.lazy-initialization=true"
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/school_management_system?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Theraghu@5e8}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: student-assignment-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+
+  student-examination-service:
+    build:
+      context: ./backend/student-examination-service
+      dockerfile: Dockerfile
+    image: smart-attendance/student-examination-service:latest
+    container_name: smart-attendance-student-examination
+    restart: unless-stopped
+    networks:
+      - smart-network
+    ports:
+      - "8098:8098"
+    environment:
+      JAVA_OPTS: "-XX:TieredStopAtLevel=1 -Xms64m -Xmx200m -XX:+UseSerialGC -Dspring.main.lazy-initialization=true"
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/school_management_system?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Theraghu@5e8}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: student-examination-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+
+  student-study-resource-service:
+    build:
+      context: ./backend/student-study-resource-service
+      dockerfile: Dockerfile
+    image: smart-attendance/student-study-resource-service:latest
+    container_name: smart-attendance-student-study-resource
+    restart: unless-stopped
+    networks:
+      - smart-network
+    ports:
+      - "8100:8100"
+    environment:
+      JAVA_OPTS: "-XX:TieredStopAtLevel=1 -Xms64m -Xmx200m -XX:+UseSerialGC -Dspring.main.lazy-initialization=true"
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/school_management_system?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Theraghu@5e8}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: student-study-resource-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+
+  # ==========================================
+  # 5. Frontend Tier: React 19 + Vite (Nginx)
+  # ==========================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: smart-attendance/frontend:latest
+    container_name: smart-attendance-frontend
+    restart: unless-stopped
+    networks:
+      - smart-network
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api-gateway
