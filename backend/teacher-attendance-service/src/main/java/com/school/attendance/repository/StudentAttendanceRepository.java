@@ -18,4 +18,5 @@ public interface StudentAttendanceRepository extends JpaRepository<StudentAttend
     List<StudentAttendance> findByStudentIdAndAttendanceDateOrderByPeriodIndexAsc(String studentId, LocalDate date);
     List<StudentAttendance> findByClassStandardAndSectionNameAndAttendanceDateBetween(Integer classStandard, String sectionName, LocalDate start, LocalDate end);
     List<StudentAttendance> findByStudentIdAndAttendanceDateBetween(String studentId, LocalDate start, LocalDate end);
+    List<StudentAttendance> findByClassStandardAndSectionName(Integer classStandard, String sectionName);
 }

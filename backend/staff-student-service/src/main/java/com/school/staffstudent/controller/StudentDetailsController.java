@@ -54,67 +54,65 @@ public class StudentDetailsController {
     }
 
     private void syncStudentsFromAdmissions() {
-        // 1. Fetch all accepted admissions from the database
-        List<AdmissionEntity> acceptedAdmissions = admissionRepository.findByStatus("ACCEPTED");
-
-        // 2. Extract admission IDs
-        List<String> acceptedIds = acceptedAdmissions.stream()
-                .map(AdmissionEntity::getAdmissionId)
-                .toList();
-
-        // 3. Delete any student details that are no longer accepted or don't match (purge dummy data)
-        List<StudentDetailsEntity> existingStudents = studentRepository.findAll();
-        for (StudentDetailsEntity s : existingStudents) {
-            if (!acceptedIds.contains(s.getStudentId())) {
-                studentRepository.delete(s);
+        try {
+            // 1. Fetch all accepted admissions from the database
+            List<AdmissionEntity> acceptedAdmissions = admissionRepository.findByStatus("ACCEPTED");
+            if (acceptedAdmissions == null || acceptedAdmissions.isEmpty()) {
+                return;
             }
-        }
 
-        // 4. Insert or update accepted students into student_details table
-        for (AdmissionEntity adm : acceptedAdmissions) {
-            java.util.Optional<StudentDetailsEntity> existingOpt = studentRepository.findByStudentId(adm.getAdmissionId());
-            
-            // Parse classStandard from className (e.g. "Grade 10" -> 10)
-            int classStandard = parseClassStandard(adm.getClassName());
-            // Parse section name (default to 'A')
-            String sectionName = adm.getSection() != null && !adm.getSection().trim().isEmpty()
-                    ? adm.getSection().trim().toUpperCase()
-                    : "A";
+            // 2. Insert or update accepted students into student_details table without purging referenced records
+            for (AdmissionEntity adm : acceptedAdmissions) {
+                if (adm.getAdmissionId() == null || adm.getAdmissionId().isBlank()) {
+                    continue;
+                }
 
-            String studentFirstName = adm.getFirstName();
-            String studentLastName = adm.getLastName();
+                java.util.Optional<StudentDetailsEntity> existingOpt = studentRepository.findByStudentId(adm.getAdmissionId());
+                
+                // Parse classStandard from className (e.g. "Grade 10" -> 10)
+                int classStandard = parseClassStandard(adm.getClassName());
+                // Parse section name (default to 'A')
+                String sectionName = adm.getSection() != null && !adm.getSection().trim().isEmpty()
+                        ? adm.getSection().trim().toUpperCase()
+                        : "A";
 
-            if ("PARENT".equalsIgnoreCase(adm.getApplicantType()) && adm.getChildName() != null && !adm.getChildName().trim().isEmpty()) {
-                String fullName = adm.getChildName().trim();
-                int lastSpaceIdx = fullName.lastIndexOf(' ');
-                if (lastSpaceIdx > 0) {
-                    studentFirstName = fullName.substring(0, lastSpaceIdx).trim();
-                    studentLastName = fullName.substring(lastSpaceIdx + 1).trim();
+                String studentFirstName = adm.getFirstName() != null ? adm.getFirstName() : "";
+                String studentLastName = adm.getLastName() != null ? adm.getLastName() : "";
+
+                if ("PARENT".equalsIgnoreCase(adm.getApplicantType()) && adm.getChildName() != null && !adm.getChildName().trim().isEmpty()) {
+                    String fullName = adm.getChildName().trim();
+                    int lastSpaceIdx = fullName.lastIndexOf(' ');
+                    if (lastSpaceIdx > 0) {
+                        studentFirstName = fullName.substring(0, lastSpaceIdx).trim();
+                        studentLastName = fullName.substring(lastSpaceIdx + 1).trim();
+                    } else {
+                        studentFirstName = fullName;
+                        studentLastName = "";
+                    }
+                }
+
+                if (existingOpt.isPresent()) {
+                    StudentDetailsEntity student = existingOpt.get();
+                    student.setFirstName(studentFirstName);
+                    student.setLastName(studentLastName);
+                    student.setParentName(adm.getParentName() != null ? adm.getParentName() : student.getParentName());
+                    student.setClassStandard(classStandard);
+                    student.setSectionName(sectionName);
+                    studentRepository.save(student);
                 } else {
-                    studentFirstName = fullName;
-                    studentLastName = "";
+                    StudentDetailsEntity student = new StudentDetailsEntity(
+                            adm.getAdmissionId(),
+                            studentFirstName,
+                            studentLastName,
+                            adm.getParentName() != null ? adm.getParentName() : "Parent",
+                            classStandard,
+                            sectionName
+                    );
+                    studentRepository.save(student);
                 }
             }
-
-            if (existingOpt.isPresent()) {
-                StudentDetailsEntity student = existingOpt.get();
-                student.setFirstName(studentFirstName);
-                student.setLastName(studentLastName);
-                student.setParentName(adm.getParentName());
-                student.setClassStandard(classStandard);
-                student.setSectionName(sectionName);
-                studentRepository.save(student);
-            } else {
-                StudentDetailsEntity student = new StudentDetailsEntity(
-                        adm.getAdmissionId(),
-                        studentFirstName,
-                        studentLastName,
-                        adm.getParentName(),
-                        classStandard,
-                        sectionName
-                );
-                studentRepository.save(student);
-            }
+        } catch (Exception e) {
+            System.err.println("Warning: syncStudentsFromAdmissions error ignored: " + e.getMessage());
         }
     }
 

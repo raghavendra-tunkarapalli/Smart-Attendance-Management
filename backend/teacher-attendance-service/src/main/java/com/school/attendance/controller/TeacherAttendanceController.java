@@ -195,4 +195,16 @@ public class TeacherAttendanceController {
                 studentId, startDate, endDate);
         return ResponseEntity.ok(records);
     }
+
+    /**
+     * Fetches all attendance records for a class standard and section (all-time summary)
+     */
+    @GetMapping("/class-all")
+    public ResponseEntity<List<StudentAttendance>> getAllAttendanceForClass(
+            @RequestParam Integer classStandard,
+            @RequestParam String sectionName) {
+        List<StudentAttendance> records = attendanceRepository.findByClassStandardAndSectionName(
+                classStandard, sectionName.toUpperCase());
+        return ResponseEntity.ok(records);
+    }
 }

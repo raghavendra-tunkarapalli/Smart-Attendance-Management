@@ -28,6 +28,7 @@ import AdminEnquiryModule from './AdminEnquiryModule';
 import StudentPortalModule from './StudentPortalModule';
 import TeacherPortalModule from './TeacherPortalModule';
 import StaffPortalModule from './StaffPortalModule';
+import ParentProfileModule from './ParentProfileModule';
 
 export default function Dashboard({ user, token, onLogout }) {
   const decodedClaims = decodeJwt(token);
@@ -371,86 +372,94 @@ export default function Dashboard({ user, token, onLogout }) {
                     {currentModule.desc}
                   </p>
                 </div>
-              </div>
-
-              {/* Module Content */}
+              </div>              {/* Module Content */}
               {selectedModule === 'profile' && (
-                <div>
-                  <h4 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '16px', color: 'var(--color-ink)' }}>
-                    {portalRoleTitle} Authentication & Account Records
-                  </h4>
+                isParent ? (
+                  <ParentProfileModule
+                    user={user}
+                    decodedClaims={decodedClaims}
+                    currentRole={currentRole}
+                    isAdmin={isAdmin}
+                    isParent={isParent}
+                  />
+                ) : (
+                  <div>
+                    <h4 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '16px', color: 'var(--color-ink)' }}>
+                      {portalRoleTitle} Authentication & Account Records
+                    </h4>
 
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                      gap: 'var(--spacing-16)'
-                    }}
-                  >
-                    <div style={{ background: 'var(--color-studio-mist)', padding: '16px 20px', borderRadius: '14px', border: '1px solid var(--color-hairline-silver)' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <IdCard size={12} /> User Identifier
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                        gap: 'var(--spacing-16)'
+                      }}
+                    >
+                      <div style={{ background: 'var(--color-studio-mist)', padding: '16px 20px', borderRadius: '14px', border: '1px solid var(--color-hairline-silver)' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <IdCard size={12} /> User Identifier
+                        </div>
+                        <div style={{ color: 'var(--color-ink)', fontWeight: '600', fontSize: '15px', marginTop: '6px' }}>
+                          {user?.userId || decodedClaims?.user_id || '1'}
+                        </div>
                       </div>
-                      <div style={{ color: 'var(--color-ink)', fontWeight: '600', fontSize: '15px', marginTop: '6px' }}>
-                        {user?.userId || decodedClaims?.user_id || '1'}
-                      </div>
-                    </div>
 
-                    <div style={{ background: 'var(--color-studio-mist)', padding: '16px 20px', borderRadius: '14px', border: '1px solid var(--color-hairline-silver)' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Shield size={12} /> Assigned Security Role
+                      <div style={{ background: 'var(--color-studio-mist)', padding: '16px 20px', borderRadius: '14px', border: '1px solid var(--color-hairline-silver)' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Shield size={12} /> Assigned Security Role
+                        </div>
+                        <div style={{ color: 'var(--color-pricing-blue)', fontWeight: '600', fontSize: '15px', marginTop: '6px' }}>
+                          {currentRole}
+                        </div>
                       </div>
-                      <div style={{ color: 'var(--color-pricing-blue)', fontWeight: '600', fontSize: '15px', marginTop: '6px' }}>
-                        {currentRole}
-                      </div>
-                    </div>
 
-                    <div style={{ background: 'var(--color-studio-mist)', padding: '16px 20px', borderRadius: '14px', border: '1px solid var(--color-hairline-silver)' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <User size={12} /> Username
+                      <div style={{ background: 'var(--color-studio-mist)', padding: '16px 20px', borderRadius: '14px', border: '1px solid var(--color-hairline-silver)' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <User size={12} /> Username
+                        </div>
+                        <div style={{ color: 'var(--color-ink)', fontWeight: '600', fontSize: '15px', marginTop: '6px' }}>
+                          {user?.username || decodedClaims?.username || '—'}
+                        </div>
                       </div>
-                      <div style={{ color: 'var(--color-ink)', fontWeight: '600', fontSize: '15px', marginTop: '6px' }}>
-                        {user?.username || decodedClaims?.username || '—'}
-                      </div>
-                    </div>
 
-                    <div style={{ background: 'var(--color-studio-mist)', padding: '16px 20px', borderRadius: '14px', border: '1px solid var(--color-hairline-silver)' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Mail size={12} /> Registered Email
+                      <div style={{ background: 'var(--color-studio-mist)', padding: '16px 20px', borderRadius: '14px', border: '1px solid var(--color-hairline-silver)' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Mail size={12} /> Registered Email
+                        </div>
+                        <div style={{ color: 'var(--color-ink)', fontWeight: '600', fontSize: '15px', marginTop: '6px' }}>
+                          {email}
+                        </div>
                       </div>
-                      <div style={{ color: 'var(--color-ink)', fontWeight: '600', fontSize: '15px', marginTop: '6px' }}>
-                        {email}
-                      </div>
-                    </div>
 
-                    <div style={{ background: 'var(--color-studio-mist)', padding: '16px 20px', borderRadius: '14px', border: '1px solid var(--color-hairline-silver)' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em' }}>
-                        First Name
+                      <div style={{ background: 'var(--color-studio-mist)', padding: '16px 20px', borderRadius: '14px', border: '1px solid var(--color-hairline-silver)' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em' }}>
+                          First Name
+                        </div>
+                        <div style={{ color: 'var(--color-ink)', fontWeight: '600', fontSize: '15px', marginTop: '6px' }}>
+                          {firstName}
+                        </div>
                       </div>
-                      <div style={{ color: 'var(--color-ink)', fontWeight: '600', fontSize: '15px', marginTop: '6px' }}>
-                        {firstName}
-                      </div>
-                    </div>
 
-                    <div style={{ background: 'var(--color-studio-mist)', padding: '16px 20px', borderRadius: '14px', border: '1px solid var(--color-hairline-silver)' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em' }}>
-                        Last Name
+                      <div style={{ background: 'var(--color-studio-mist)', padding: '16px 20px', borderRadius: '14px', border: '1px solid var(--color-hairline-silver)' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em' }}>
+                          Last Name
+                        </div>
+                        <div style={{ color: 'var(--color-ink)', fontWeight: '600', fontSize: '15px', marginTop: '6px' }}>
+                          {lastName}
+                        </div>
                       </div>
-                      <div style={{ color: 'var(--color-ink)', fontWeight: '600', fontSize: '15px', marginTop: '6px' }}>
-                        {lastName}
-                      </div>
-                    </div>
 
-                    <div style={{ background: 'var(--color-studio-mist)', padding: '16px 20px', borderRadius: '14px', border: '1px solid var(--color-hairline-silver)' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <KeyRound size={12} /> Session Clearance
-                      </div>
-                      <div style={{ color: '#16a34a', fontWeight: '600', fontSize: '15px', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <CheckCircle size={14} /> Active & Verified
+                      <div style={{ background: 'var(--color-studio-mist)', padding: '16px 20px', borderRadius: '14px', border: '1px solid var(--color-hairline-silver)' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <KeyRound size={12} /> Session Clearance
+                        </div>
+                        <div style={{ color: '#16a34a', fontWeight: '600', fontSize: '15px', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <CheckCircle size={14} /> Active & Verified
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                )
               )}
 
               {/* ADMIN: System Services Module */}
@@ -467,7 +476,8 @@ export default function Dashboard({ user, token, onLogout }) {
                       { name: 'Staff Portal Service', port: '8092', status: 'ONLINE', desc: 'Master Scheduling & Workload' },
                       { name: 'Teacher Portal Service', port: '8091', status: 'ONLINE', desc: 'Faculty Directory & Subjects' },
                       { name: 'Teacher Attendance Service', port: '8094', status: 'ONLINE', desc: 'Period Roll Call & Roster' },
-                      { name: 'Student Schedule Service', port: '8095', status: 'ONLINE', desc: 'Student Timetables & Classes' }
+                      { name: 'Student Schedule Service', port: '8095', status: 'ONLINE', desc: 'Student Timetables & Classes' },
+                      { name: 'Parent Profile Service', port: '8101', status: 'ONLINE', desc: 'Guardian Profiles & Child Relations' }
                     ].map((svc) => (
                       <div key={svc.name} style={{ background: 'var(--color-studio-mist)', border: '1px solid var(--color-hairline-silver)', borderRadius: '14px', padding: '16px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>

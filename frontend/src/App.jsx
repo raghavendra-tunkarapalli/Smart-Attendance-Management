@@ -64,7 +64,10 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      return res;
+      if (res && res.status < 500) {
+        return res;
+      }
+      console.warn(`API Gateway returned HTTP ${res?.status}, trying Direct Microservice endpoint...`);
     } catch (errGateway) {
       console.warn('API Gateway unreachable, trying Direct Microservice endpoint...', errGateway);
     }

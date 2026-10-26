@@ -535,6 +535,34 @@ services:
         condition: service_healthy
 
   # ==========================================
+  # Parent Profile Service
+  # ==========================================
+  parent-profile-service:
+    build:
+      context: ./backend/parent-profile-service
+      dockerfile: Dockerfile
+    image: smart-attendance/parent-profile-service:latest
+    container_name: smart-attendance-parent-profile
+    restart: unless-stopped
+    networks:
+      - smart-network
+    ports:
+      - "8101:8101"
+    environment:
+      JAVA_OPTS: "-XX:TieredStopAtLevel=1 -Xms64m -Xmx200m -XX:+UseSerialGC -Dspring.main.lazy-initialization=true"
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/school_management_system?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Theraghu@5e8}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: parent-profile-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+
+  # ==========================================
   # 5. Frontend Tier: React 19 + Vite (Nginx)
   # ==========================================
   frontend:

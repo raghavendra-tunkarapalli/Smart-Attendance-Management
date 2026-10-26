@@ -14,8 +14,8 @@ Write-Host "==========================================================" -Foregro
 Write-Host "  Launching Smart Attendance Management Services Quickly   " -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
-# High-efficiency JVM startup flags: Tier 1 C1 compiler, low heap overhead, SerialGC, lazy initialization
-$jvmArgs = "-XX:TieredStopAtLevel=1 -Xms64m -Xmx200m -XX:+UseSerialGC -Dspring.main.lazy-initialization=true -Djava.security.egd=file:/dev/./urandom"
+# High-efficiency JVM startup flags: Tier 1 C1 compiler, low heap overhead, SerialGC, lazy initialization, local 127.0.0.1 Eureka binding
+$jvmArgs = "-XX:TieredStopAtLevel=1 -Xms64m -Xmx200m -XX:+UseSerialGC -Dspring.main.lazy-initialization=true -Djava.security.egd=file:/dev/./urandom -Deureka.instance.prefer-ip-address=true -Deureka.instance.ip-address=127.0.0.1"
 
 # Service definitions: Name, Path, Port
 $services = @(
@@ -39,7 +39,8 @@ $services = @(
     @{ Name = "student-assignment-service"; Path = "backend/student-assignment-service"; Port = 8097 },
     @{ Name = "student-examination-service"; Path = "backend/student-examination-service"; Port = 8098 },
     @{ Name = "teacher-lesson-notes-service"; Path = "backend/teacher-lesson-notes-service"; Port = 8089 },
-    @{ Name = "student-study-resource-service"; Path = "backend/student-study-resource-service"; Port = 8100 }
+    @{ Name = "student-study-resource-service"; Path = "backend/student-study-resource-service"; Port = 8100 },
+    @{ Name = "parent-profile-service"; Path = "backend/parent-profile-service"; Port = 8101 }
 )
 
 # 0. Check Database status (port 3306)
@@ -125,9 +126,9 @@ if ($NoWait) {
     Write-Host "Services are starting up in background. Check 'logs' folder for output." -ForegroundColor Cyan
 } else {
     Write-Host "Monitoring service ports for readiness..." -ForegroundColor Cyan
-    $maxCheck = 25
+    $maxCheck = 120
     $iteration = 0
-    $allPorts = @(8761, 8099, 5173) + ($otherServices | ForEach-Object { $_.Port })
+    $allPorts = @(5173) + ($services | ForEach-Object { $_.Port }) | Select-Object -Unique
 
     while ($iteration -lt $maxCheck) {
         Start-Sleep -Seconds 1

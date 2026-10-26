@@ -369,13 +369,12 @@ export default function StaffPortalModule({ user }) {
     }
   };
 
-  const fetchMod3MonthlyAttendance = async (clsStandard, secName, month, year) => {
+  const fetchMod3Attendance = async (clsStandard, secName) => {
     setMod3AttendanceLoading(true);
     try {
-      const url = `http://localhost:8099/api/teacher-attendance/monthly?classStandard=${clsStandard}&sectionName=${secName}&month=${month}&year=${year}`;
-      let res = await fetch(url).catch(() => null);
+      let res = await fetch(`http://localhost:8099/api/teacher-attendance/class-all?classStandard=${clsStandard}&sectionName=${secName}`).catch(() => null);
       if (!res || !res.ok) {
-        res = await fetch(`http://localhost:8094/api/teacher-attendance/monthly?classStandard=${clsStandard}&sectionName=${secName}&month=${month}&year=${year}`).catch(() => null);
+        res = await fetch(`http://localhost:8094/api/teacher-attendance/class-all?classStandard=${clsStandard}&sectionName=${secName}`).catch(() => null);
       }
       if (res && res.ok) {
         const data = await res.json();
@@ -384,20 +383,20 @@ export default function StaffPortalModule({ user }) {
         setMod3AttendanceRecords([]);
       }
     } catch (e) {
-      console.error("Failed to fetch monthly attendance records:", e);
+      console.error("Failed to fetch class attendance:", e);
       setMod3AttendanceRecords([]);
     } finally {
       setMod3AttendanceLoading(false);
     }
   };
 
-  const fetchStudentMonthlyAttendanceDetails = async (studentId, month, year) => {
+  const fetchStudentAttendanceDetails = async (studentId) => {
+    if (!studentId) return;
     setStudentDetailLoading(true);
     try {
-      const url = `http://localhost:8099/api/teacher-attendance/student-monthly?studentId=${studentId}&month=${month}&year=${year}`;
-      let res = await fetch(url).catch(() => null);
+      let res = await fetch(`http://localhost:8099/api/teacher-attendance/student?studentId=${studentId}`).catch(() => null);
       if (!res || !res.ok) {
-        res = await fetch(`http://localhost:8094/api/teacher-attendance/student-monthly?studentId=${studentId}&month=${month}&year=${year}`).catch(() => null);
+        res = await fetch(`http://localhost:8094/api/teacher-attendance/student?studentId=${studentId}`).catch(() => null);
       }
       if (res && res.ok) {
         const data = await res.json();
@@ -406,7 +405,7 @@ export default function StaffPortalModule({ user }) {
         setSelectedStudentAttendance([]);
       }
     } catch (e) {
-      console.error("Failed to fetch student details monthly attendance:", e);
+      console.error("Failed to fetch student attendance history:", e);
       setSelectedStudentAttendance([]);
     } finally {
       setStudentDetailLoading(false);
@@ -416,15 +415,15 @@ export default function StaffPortalModule({ user }) {
   useEffect(() => {
     if (activeTab === 'module3') {
       fetchMod3Students(mod3SelectedClass, mod3SelectedSection);
-      fetchMod3MonthlyAttendance(mod3SelectedClass, mod3SelectedSection, mod3SelectedMonth, mod3SelectedYear);
+      fetchMod3Attendance(mod3SelectedClass, mod3SelectedSection);
     }
-  }, [activeTab, mod3SelectedClass, mod3SelectedSection, mod3SelectedMonth, mod3SelectedYear]);
+  }, [activeTab, mod3SelectedClass, mod3SelectedSection]);
 
   useEffect(() => {
-    if (selectedStudentDetail) {
-      fetchStudentMonthlyAttendanceDetails(selectedStudentDetail.studentId, detailModalMonth, detailModalYear);
+    if (selectedStudentDetail?.studentId) {
+      fetchStudentAttendanceDetails(selectedStudentDetail.studentId);
     }
-  }, [selectedStudentDetail, detailModalMonth, detailModalYear]);
+  }, [selectedStudentDetail]);
 
 
 
@@ -770,10 +769,10 @@ export default function StaffPortalModule({ user }) {
     {
       id: 'module3',
       title: 'Student Details',
-      tag: 'Monthly Attendance Logs',
+      tag: 'Class & Section Records',
       icon: <UserCheck size={18} />,
       theme: { bg: '#ecfdf5', color: '#059669', border: '#d1fae5' },
-      desc: 'Browse student monthly attendance logs and calculate percentage.'
+      desc: 'Browse student details and profile records filtered by class and section.'
     },
     {
       id: 'module4',
@@ -2095,17 +2094,22 @@ export default function StaffPortalModule({ user }) {
                     </div>
                   </div>
                 ) : mod.id === 'module3' ? (
-                  /* MODULE 3: STUDENT DETAILS & ATTENDANCE */
+                  /* MODULE 3: STUDENT DETAILS */
                   <div style={{ background: 'var(--color-gallery-white)', borderRadius: 'var(--radius-cards)', border: '1px solid var(--color-hairline-silver)', padding: 'var(--spacing-24)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-20)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                         
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-studio-mist)', padding: '4px 10px', borderRadius: 'var(--radius-inputs)', border: '1px solid var(--color-steel)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-studio-mist)', padding: '6px 12px', borderRadius: 'var(--radius-inputs)', border: '1px solid var(--color-steel)' }}>
                           <span style={{ fontSize: '12px', color: 'var(--color-slate)', fontWeight: '600' }}>Class:</span>
                           <select
                             value={mod3SelectedClass}
-                            onChange={(e) => setMod3SelectedClass(parseInt(e.target.value))}
-                            style={{ background: 'transparent', color: 'var(--color-ink)', border: 'none', fontSize: '12px', fontWeight: '500', outline: 'none', cursor: 'pointer' }}
+                            onChange={(e) => {
+                              const newCls = parseInt(e.target.value);
+                              setMod3SelectedClass(newCls);
+                              fetchMod3Students(newCls, mod3SelectedSection);
+                              fetchMod3Attendance(newCls, mod3SelectedSection);
+                            }}
+                            style={{ background: 'transparent', color: 'var(--color-ink)', border: 'none', fontSize: '12px', fontWeight: '600', outline: 'none', cursor: 'pointer' }}
                           >
                             {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(num => (
                               <option key={num} value={num}>Class {num}</option>
@@ -2113,12 +2117,17 @@ export default function StaffPortalModule({ user }) {
                           </select>
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-studio-mist)', padding: '4px 10px', borderRadius: 'var(--radius-inputs)', border: '1px solid var(--color-steel)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-studio-mist)', padding: '6px 12px', borderRadius: 'var(--radius-inputs)', border: '1px solid var(--color-steel)' }}>
                           <span style={{ fontSize: '12px', color: 'var(--color-slate)', fontWeight: '600' }}>Section:</span>
                           <select
                             value={mod3SelectedSection}
-                            onChange={(e) => setMod3SelectedSection(e.target.value)}
-                            style={{ background: 'transparent', color: 'var(--color-ink)', border: 'none', fontSize: '12px', fontWeight: '500', outline: 'none', cursor: 'pointer' }}
+                            onChange={(e) => {
+                              const newSec = e.target.value;
+                              setMod3SelectedSection(newSec);
+                              fetchMod3Students(mod3SelectedClass, newSec);
+                              fetchMod3Attendance(mod3SelectedClass, newSec);
+                            }}
+                            style={{ background: 'transparent', color: 'var(--color-ink)', border: 'none', fontSize: '12px', fontWeight: '600', outline: 'none', cursor: 'pointer' }}
                           >
                             {['A', 'B', 'C'].map(sec => (
                               <option key={sec} value={sec}>Section {sec}</option>
@@ -2126,28 +2135,34 @@ export default function StaffPortalModule({ user }) {
                           </select>
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-studio-mist)', padding: '4px 10px', borderRadius: 'var(--radius-inputs)', border: '1px solid var(--color-steel)' }}>
-                          <span style={{ fontSize: '12px', color: 'var(--color-slate)', fontWeight: '600' }}>Month:</span>
-                          <select
-                            value={mod3SelectedMonth}
-                            onChange={(e) => setMod3SelectedMonth(parseInt(e.target.value))}
-                            style={{ background: 'transparent', color: 'var(--color-ink)', border: 'none', fontSize: '12px', fontWeight: '500', outline: 'none', cursor: 'pointer' }}
-                          >
-                            {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, idx) => (
-                              <option key={idx + 1} value={idx + 1}>{m}</option>
-                            ))}
-                          </select>
-                        </div>
+                        <button
+                          onClick={() => {
+                            fetchMod3Students(mod3SelectedClass, mod3SelectedSection);
+                            fetchMod3Attendance(mod3SelectedClass, mod3SelectedSection);
+                          }}
+                          className="btn-apple-outline"
+                          style={{ padding: '6px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                          title="Refresh Student Roster"
+                        >
+                          <RefreshCw size={13} className={mod3Loading || mod3AttendanceLoading ? 'spin' : ''} />
+                          <span>Refresh</span>
+                        </button>
                       </div>
 
-                      <input
-                        type="text"
-                        placeholder="Search student..."
-                        value={mod3SearchQuery}
-                        onChange={(e) => setMod3SearchQuery(e.target.value)}
-                        className="search-input"
-                        style={{ width: '220px', boxSizing: 'border-box' }}
-                      />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '12px', color: 'var(--color-slate)', fontWeight: '500' }}>
+                          Students in Class {mod3SelectedClass}-{mod3SelectedSection}: <strong style={{ color: 'var(--color-ink)' }}>{mod3Students.length}</strong>
+                        </span>
+
+                        <input
+                          type="text"
+                          placeholder="Search student or parent..."
+                          value={mod3SearchQuery}
+                          onChange={(e) => setMod3SearchQuery(e.target.value)}
+                          className="search-input"
+                          style={{ width: '230px', boxSizing: 'border-box' }}
+                        />
+                      </div>
                     </div>
 
                     <div style={{ overflowX: 'auto' }}>
@@ -2156,7 +2171,8 @@ export default function StaffPortalModule({ user }) {
                           <tr style={{ background: 'var(--color-paper-frost)', borderBottom: '1px solid var(--color-hairline-silver)', textTransform: 'uppercase', fontSize: '11px', color: 'var(--color-slate)', letterSpacing: '0.04em' }}>
                             <th style={{ padding: '12px 14px', textAlign: 'left' }}>Student ID</th>
                             <th style={{ padding: '12px 14px', textAlign: 'left' }}>Student Name</th>
-                            <th style={{ padding: '12px 14px', textAlign: 'left' }}>Parent Name</th>
+                            <th style={{ padding: '12px 14px', textAlign: 'left' }}>Class & Section</th>
+                            <th style={{ padding: '12px 14px', textAlign: 'left' }}>Parent / Guardian</th>
                             <th style={{ padding: '12px 14px', textAlign: 'center' }}>Present Days</th>
                             <th style={{ padding: '12px 14px', textAlign: 'center' }}>Absent Days</th>
                             <th style={{ padding: '12px 14px', textAlign: 'center' }}>Attendance %</th>
@@ -2166,62 +2182,109 @@ export default function StaffPortalModule({ user }) {
                         <tbody>
                           {mod3Loading ? (
                             <tr>
-                              <td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: 'var(--color-slate)' }}>
-                                Loading student records...
+                              <td colSpan={8} style={{ padding: '36px', textAlign: 'center', color: 'var(--color-slate)' }}>
+                                <RefreshCw size={18} className="spin" style={{ margin: '0 auto 8px', display: 'block' }} />
+                                Loading Class {mod3SelectedClass} - Section {mod3SelectedSection} student records...
                               </td>
                             </tr>
                           ) : (
-                            mod3Students
-                              .filter(s =>
-                                (s.firstName || '').toLowerCase().includes(mod3SearchQuery.toLowerCase()) ||
-                                (s.lastName || '').toLowerCase().includes(mod3SearchQuery.toLowerCase()) ||
-                                (s.studentId || '').toLowerCase().includes(mod3SearchQuery.toLowerCase())
-                              )
-                              .map((stu, idx) => {
+                            (() => {
+                              const filtered = mod3Students.filter(s => {
+                                const q = (mod3SearchQuery || '').toLowerCase();
+                                const fName = (s.firstName || '').toLowerCase();
+                                const lName = (s.lastName || '').toLowerCase();
+                                const sId = (s.studentId || '').toLowerCase();
+                                const pName = (s.parentName || '').toLowerCase();
+                                return fName.includes(q) || lName.includes(q) || sId.includes(q) || pName.includes(q);
+                              });
+
+                              if (filtered.length === 0) {
+                                return (
+                                  <tr>
+                                    <td colSpan={8} style={{ padding: '48px 20px', textAlign: 'center' }}>
+                                      <div style={{ color: 'var(--color-slate)', fontSize: '13px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                                        <Users size={32} color="var(--color-steel)" />
+                                        <strong style={{ color: 'var(--color-ink)', fontSize: '14px' }}>
+                                          No students found in Class {mod3SelectedClass} - Section {mod3SelectedSection}
+                                        </strong>
+                                        <span style={{ color: 'var(--color-slate)', fontSize: '12px' }}>
+                                          {mod3SearchQuery ? 'No student matches your search query.' : 'Choose another class or section, or verify student admissions.'}
+                                        </span>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              }
+
+                              return filtered.map((stu, idx) => {
                                 const studentRecs = mod3AttendanceRecords.filter(r => r.studentId === stu.studentId);
                                 const presentCount = studentRecs.filter(r => r.status === 'PRESENT').length;
                                 const absentCount = studentRecs.filter(r => r.status === 'ABSENT').length;
                                 const totalDays = studentRecs.length;
-                                const percentage = totalDays > 0 ? Math.round((presentCount / totalDays) * 100) + '%' : '0%';
+                                const percentage = totalDays > 0 ? Math.round((presentCount / totalDays) * 100) : null;
 
                                 return (
-                                  <tr key={stu.id || idx} style={{ borderBottom: '1px solid var(--color-control-gray)', background: idx % 2 === 0 ? 'var(--color-gallery-white)' : 'var(--color-studio-mist)' }}>
+                                  <tr key={stu.id || stu.studentId || idx} style={{ borderBottom: '1px solid var(--color-control-gray)', background: idx % 2 === 0 ? 'var(--color-gallery-white)' : 'var(--color-studio-mist)' }}>
                                     <td style={{ padding: '12px 14px', fontWeight: '600', color: 'var(--color-pricing-blue)' }}>
                                       {stu.studentId}
                                     </td>
-                                    <td style={{ padding: '12px 14px', fontWeight: '500', color: 'var(--color-ink)' }}>
+                                    <td style={{ padding: '12px 14px', fontWeight: '600', color: 'var(--color-ink)' }}>
                                       {stu.firstName} {stu.lastName}
                                     </td>
+                                    <td style={{ padding: '12px 14px', color: 'var(--color-ink)' }}>
+                                      <span style={{ background: 'var(--color-paper-frost)', border: '1px solid var(--color-hairline-silver)', padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '600' }}>
+                                        Class {stu.classStandard || mod3SelectedClass} - Sec {stu.sectionName || mod3SelectedSection}
+                                      </span>
+                                    </td>
                                     <td style={{ padding: '12px 14px', color: 'var(--color-slate)' }}>
-                                      {stu.parentName}
+                                      {stu.parentName || '—'}
                                     </td>
-                                    <td style={{ padding: '12px 14px', textAlign: 'center', color: 'var(--color-pricing-blue)', fontWeight: '600' }}>
-                                      {presentCount}
+                                    <td style={{ padding: '12px 14px', textAlign: 'center', fontWeight: '700', color: totalDays > 0 ? 'var(--color-pricing-blue)' : 'var(--color-slate)' }}>
+                                      {totalDays > 0 ? presentCount : '—'}
                                     </td>
-                                    <td style={{ padding: '12px 14px', textAlign: 'center', color: 'var(--color-launch-orange)', fontWeight: '600' }}>
-                                      {absentCount}
+                                    <td style={{ padding: '12px 14px', textAlign: 'center', fontWeight: '700', color: totalDays > 0 && absentCount > 0 ? 'var(--color-launch-orange)' : 'var(--color-slate)' }}>
+                                      {totalDays > 0 ? absentCount : '—'}
                                     </td>
                                     <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                                      <span style={{ background: 'var(--color-studio-mist)', color: 'var(--color-ink)', border: '1px solid var(--color-hairline-silver)', padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: '600' }}>
-                                        {percentage}
-                                      </span>
+                                      {percentage !== null ? (
+                                        <span style={{
+                                          padding: '3px 10px',
+                                          borderRadius: 'var(--radius-buttons)',
+                                          fontSize: '11.5px',
+                                          fontWeight: '700',
+                                          background: percentage >= 75 ? '#ecfdf5' : percentage >= 50 ? '#fffbeb' : '#fef2f2',
+                                          color: percentage >= 75 ? '#059669' : percentage >= 50 ? '#d97706' : '#dc2626',
+                                          border: `1px solid ${percentage >= 75 ? '#a7f3d0' : percentage >= 50 ? '#fde68a' : '#fecaca'}`
+                                        }}>
+                                          {percentage}%
+                                        </span>
+                                      ) : (
+                                        <span style={{
+                                          padding: '3px 10px',
+                                          borderRadius: 'var(--radius-buttons)',
+                                          fontSize: '11px',
+                                          fontWeight: '500',
+                                          background: 'var(--color-studio-mist)',
+                                          color: 'var(--color-slate)',
+                                          border: '1px solid var(--color-hairline-silver)'
+                                        }}>
+                                          No Logs
+                                        </span>
+                                      )}
                                     </td>
                                     <td style={{ padding: '12px 14px', textAlign: 'center' }}>
                                       <button
-                                        onClick={() => {
-                                          setSelectedStudentDetail(stu);
-                                          setDetailModalMonth(mod3SelectedMonth);
-                                          setDetailModalYear(mod3SelectedYear);
-                                        }}
+                                        onClick={() => setSelectedStudentDetail(stu)}
                                         className="btn-apple-outline"
                                         style={{ padding: '4px 12px', fontSize: '12px' }}
                                       >
-                                        View Log
+                                        View Details
                                       </button>
                                     </td>
                                   </tr>
                                 );
-                              })
+                              });
+                            })()
                           )}
                         </tbody>
                       </table>
@@ -2249,7 +2312,7 @@ export default function StaffPortalModule({ user }) {
         </div>
       </div>
 
-      {/* ATTENDANCE DETAIL MODAL (Apple Flat Gallery White Dialog) */}
+      {/* STUDENT PROFILE & DETAILS MODAL */}
       {selectedStudentDetail && (
         <div
           style={{
@@ -2258,8 +2321,8 @@ export default function StaffPortalModule({ user }) {
             left: 0,
             right: 0,
             bottom: 0,
-            background: 'rgba(0, 0, 0, 0.4)',
-            backdropFilter: 'blur(20px)',
+            background: 'rgba(0, 0, 0, 0.45)',
+            backdropFilter: 'blur(16px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -2274,22 +2337,40 @@ export default function StaffPortalModule({ user }) {
               border: '1px solid var(--color-hairline-silver)',
               borderRadius: 'var(--radius-cards)',
               width: '100%',
-              maxWidth: '520px',
+              maxWidth: '640px',
               padding: 'var(--spacing-28)',
               position: 'relative',
               display: 'flex',
               flexDirection: 'column',
-              gap: '16px'
+              gap: '20px',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.15)'
             }}
           >
+            {/* Modal Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <h4 style={{ color: 'var(--color-ink)', fontSize: '18px', fontWeight: '600', margin: 0 }}>
-                  Attendance Log Details
-                </h4>
-                <p style={{ color: 'var(--color-slate)', fontSize: '13px', margin: '4px 0 0 0' }}>
-                  Student: <strong style={{ color: 'var(--color-ink)' }}>{selectedStudentDetail.firstName} {selectedStudentDetail.lastName}</strong>
-                </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  background: 'var(--color-ink)',
+                  color: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '18px',
+                  fontWeight: '700'
+                }}>
+                  {(selectedStudentDetail.firstName || 'S').charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h4 style={{ color: 'var(--color-ink)', fontSize: '18px', fontWeight: '700', margin: 0 }}>
+                    {selectedStudentDetail.firstName} {selectedStudentDetail.lastName}
+                  </h4>
+                  <p style={{ color: 'var(--color-slate)', fontSize: '12.5px', margin: '2px 0 0 0' }}>
+                    Student ID: <strong style={{ color: 'var(--color-pricing-blue)' }}>{selectedStudentDetail.studentId}</strong>
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => setSelectedStudentDetail(null)}
@@ -2300,42 +2381,188 @@ export default function StaffPortalModule({ user }) {
               </button>
             </div>
 
-            <div style={{ maxHeight: '240px', overflowY: 'auto' }}>
-              {studentDetailLoading ? (
-                <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-slate)' }}>Fetching daily logs...</div>
-              ) : selectedStudentAttendance.length === 0 ? (
-                <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-slate)', fontSize: '13px' }}>
-                  No attendance records found for this student in the selected month.
+            {/* Student Info Card Grid */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '12px',
+              background: 'var(--color-studio-mist)',
+              padding: '16px',
+              borderRadius: '12px',
+              border: '1px solid var(--color-hairline-silver)'
+            }}>
+              <div>
+                <span style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600' }}>
+                  Class Standard
+                </span>
+                <div style={{ color: 'var(--color-ink)', fontWeight: '600', fontSize: '14px', marginTop: '2px' }}>
+                  Class {selectedStudentDetail.classStandard || mod3SelectedClass}
                 </div>
-              ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', color: 'var(--color-ink)' }}>
-                  <thead>
-                    <tr style={{ background: 'var(--color-studio-mist)', borderBottom: '1px solid var(--color-hairline-silver)', color: 'var(--color-slate)', fontSize: '11px', textTransform: 'uppercase' }}>
-                      <th style={{ padding: '8px 12px', textAlign: 'left' }}>Date</th>
-                      <th style={{ padding: '8px 12px', textAlign: 'center' }}>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedStudentAttendance.map((record, rIdx) => (
-                      <tr key={record.id || rIdx} style={{ borderBottom: '1px solid var(--color-control-gray)', background: rIdx % 2 === 0 ? 'var(--color-gallery-white)' : 'var(--color-studio-mist)' }}>
-                        <td style={{ padding: '8px 12px', color: 'var(--color-ink)' }}>{record.attendanceDate}</td>
-                        <td style={{ padding: '8px 12px', textAlign: 'center' }}>
-                          <span style={{ fontSize: '11px', fontWeight: '600', color: record.status === 'PRESENT' ? 'var(--color-pricing-blue)' : 'var(--color-launch-orange)' }}>
-                            {record.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+              </div>
+
+              <div>
+                <span style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600' }}>
+                  Section
+                </span>
+                <div style={{ color: 'var(--color-ink)', fontWeight: '600', fontSize: '14px', marginTop: '2px' }}>
+                  Section {selectedStudentDetail.sectionName || mod3SelectedSection}
+                </div>
+              </div>
+
+              <div>
+                <span style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600' }}>
+                  Parent / Guardian
+                </span>
+                <div style={{ color: 'var(--color-ink)', fontWeight: '600', fontSize: '14px', marginTop: '2px' }}>
+                  {selectedStudentDetail.parentName || '—'}
+                </div>
+              </div>
+
+              <div>
+                <span style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600' }}>
+                  Academic Status
+                </span>
+                <div style={{ color: '#059669', fontWeight: '600', fontSize: '14px', marginTop: '2px' }}>
+                  Active Enrolled
+                </div>
+              </div>
+
+              <div>
+                <span style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600' }}>
+                  Academic Session
+                </span>
+                <div style={{ color: 'var(--color-ink)', fontWeight: '500', fontSize: '13px', marginTop: '2px' }}>
+                  2026 – 2027
+                </div>
+              </div>
+
+              <div>
+                <span style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600' }}>
+                  Division Wing
+                </span>
+                <div style={{ color: 'var(--color-ink)', fontWeight: '500', fontSize: '13px', marginTop: '2px' }}>
+                  {(selectedStudentDetail.classStandard || mod3SelectedClass) <= 5
+                    ? 'Primary Wing'
+                    : (selectedStudentDetail.classStandard || mod3SelectedClass) <= 8
+                    ? 'Middle School'
+                    : (selectedStudentDetail.classStandard || mod3SelectedClass) <= 10
+                    ? 'Secondary Wing'
+                    : 'Senior Secondary'}
+                </div>
+              </div>
             </div>
 
+            {/* Student Attendance Summary Stats */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: '10px'
+            }}>
+              <div style={{ background: '#f8fafc', padding: '10px', borderRadius: '10px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+                <span style={{ fontSize: '10.5px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '700' }}>Total Sessions</span>
+                <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--color-ink)', marginTop: '2px' }}>
+                  {selectedStudentAttendance.length}
+                </div>
+              </div>
+              <div style={{ background: '#eff6ff', padding: '10px', borderRadius: '10px', border: '1px solid #bfdbfe', textAlign: 'center' }}>
+                <span style={{ fontSize: '10.5px', color: '#1d4ed8', textTransform: 'uppercase', fontWeight: '700' }}>Present</span>
+                <div style={{ fontSize: '16px', fontWeight: '800', color: '#1d4ed8', marginTop: '2px' }}>
+                  {selectedStudentAttendance.filter(r => r.status === 'PRESENT').length}
+                </div>
+              </div>
+              <div style={{ background: '#fff7ed', padding: '10px', borderRadius: '10px', border: '1px solid #fed7aa', textAlign: 'center' }}>
+                <span style={{ fontSize: '10.5px', color: '#c2410c', textTransform: 'uppercase', fontWeight: '700' }}>Absent</span>
+                <div style={{ fontSize: '16px', fontWeight: '800', color: '#c2410c', marginTop: '2px' }}>
+                  {selectedStudentAttendance.filter(r => r.status === 'ABSENT').length}
+                </div>
+              </div>
+              <div style={{
+                background: selectedStudentAttendance.length === 0 ? 'var(--color-studio-mist)' : (selectedStudentAttendance.filter(r => r.status === 'PRESENT').length / selectedStudentAttendance.length) >= 0.75 ? '#ecfdf5' : '#fef2f2',
+                padding: '10px',
+                borderRadius: '10px',
+                border: `1px solid ${selectedStudentAttendance.length === 0 ? 'var(--color-hairline-silver)' : (selectedStudentAttendance.filter(r => r.status === 'PRESENT').length / selectedStudentAttendance.length) >= 0.75 ? '#a7f3d0' : '#fecaca'}`,
+                textAlign: 'center'
+              }}>
+                <span style={{ fontSize: '10.5px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '700' }}>Attendance Rate</span>
+                <div style={{
+                  fontSize: '16px',
+                  fontWeight: '800',
+                  color: selectedStudentAttendance.length === 0 ? 'var(--color-slate)' : (selectedStudentAttendance.filter(r => r.status === 'PRESENT').length / selectedStudentAttendance.length) >= 0.75 ? '#059669' : '#dc2626',
+                  marginTop: '2px'
+                }}>
+                  {selectedStudentAttendance.length > 0
+                    ? Math.round((selectedStudentAttendance.filter(r => r.status === 'PRESENT').length / selectedStudentAttendance.length) * 100) + '%'
+                    : 'N/A'}
+                </div>
+              </div>
+            </div>
+
+            {/* Attendance History Log Table */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h5 style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-ink)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                  Attendance History Log
+                </h5>
+                <span style={{ fontSize: '11px', color: 'var(--color-slate)' }}>
+                  {selectedStudentAttendance.length} records logged
+                </span>
+              </div>
+
+              <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid var(--color-hairline-silver)', borderRadius: '10px' }}>
+                {studentDetailLoading ? (
+                  <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-slate)', fontSize: '12.5px' }}>
+                    <RefreshCw size={14} className="spin" style={{ display: 'inline', marginRight: '6px' }} />
+                    Loading attendance history...
+                  </div>
+                ) : selectedStudentAttendance.length === 0 ? (
+                  <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-slate)', fontSize: '12.5px' }}>
+                    No attendance records logged yet for this student.
+                  </div>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', color: 'var(--color-ink)' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--color-paper-frost)', borderBottom: '1px solid var(--color-hairline-silver)', color: 'var(--color-slate)', fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                        <th style={{ padding: '8px 10px', textAlign: 'left' }}>Date</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'left' }}>Timing / Period</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'left' }}>Subject</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'left' }}>Teacher</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'center' }}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedStudentAttendance.map((rec, rIdx) => (
+                        <tr key={rec.id || rIdx} style={{ borderBottom: '1px solid var(--color-control-gray)', background: rIdx % 2 === 0 ? '#ffffff' : 'var(--color-studio-mist)' }}>
+                          <td style={{ padding: '7px 10px', fontWeight: '600' }}>{rec.attendanceDate}</td>
+                          <td style={{ padding: '7px 10px', color: 'var(--color-slate)' }}>{rec.timing || `Period ${(rec.periodIndex ?? 0) + 1}`}</td>
+                          <td style={{ padding: '7px 10px' }}>{rec.subjectName || 'General'}</td>
+                          <td style={{ padding: '7px 10px', color: 'var(--color-slate)' }}>{rec.teacherName || '—'}</td>
+                          <td style={{ padding: '7px 10px', textAlign: 'center' }}>
+                            <span style={{
+                              fontSize: '10.5px',
+                              fontWeight: '700',
+                              padding: '2px 8px',
+                              borderRadius: '6px',
+                              background: rec.status === 'PRESENT' ? '#ecfdf5' : '#fef2f2',
+                              color: rec.status === 'PRESENT' ? '#059669' : '#dc2626',
+                              border: `1px solid ${rec.status === 'PRESENT' ? '#a7f3d0' : '#fecaca'}`
+                            }}>
+                              {rec.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Actions */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--color-control-gray)', paddingTop: '12px' }}>
               <button
                 onClick={() => setSelectedStudentDetail(null)}
                 className="btn-apple-outline"
-                style={{ padding: '6px 16px', fontSize: '13px' }}
+                style={{ padding: '6px 20px', fontSize: '13px' }}
               >
                 Close
               </button>
