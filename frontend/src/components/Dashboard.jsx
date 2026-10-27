@@ -29,6 +29,7 @@ import StudentPortalModule from './StudentPortalModule';
 import TeacherPortalModule from './TeacherPortalModule';
 import StaffPortalModule from './StaffPortalModule';
 import ParentProfileModule from './ParentProfileModule';
+import ChildAcademicsModule from './ChildAcademicsModule';
 
 export default function Dashboard({ user, token, onLogout }) {
   const decodedClaims = decodeJwt(token);
@@ -519,15 +520,13 @@ export default function Dashboard({ user, token, onLogout }) {
 
               {/* PARENT: Child Academics Module */}
               {isParent && selectedModule === 'academics' && (
-                <div style={{ textAlign: 'center', padding: '48px 24px', background: 'var(--color-studio-mist)', borderRadius: '16px' }}>
-                  <BookOpen size={36} color="var(--color-pricing-blue)" style={{ margin: '0 auto 12px' }} />
-                  <h4 style={{ fontSize: '17px', fontWeight: '600', color: 'var(--color-ink)' }}>
-                    Enrolled Student Academic Timetable
-                  </h4>
-                  <p style={{ color: 'var(--color-slate)', fontSize: '14px', maxWidth: '480px', margin: '6px auto 0' }}>
-                    Timetable synchronized with staff scheduling system. View subject faculty allocations and room assignments.
-                  </p>
-                </div>
+                <ChildAcademicsModule
+                  user={user}
+                  decodedClaims={decodedClaims}
+                  currentRole={currentRole}
+                  isAdmin={isAdmin}
+                  isParent={isParent}
+                />
               )}
 
               {/* PARENT: Tuition & Fees Module */}

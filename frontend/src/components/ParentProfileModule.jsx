@@ -541,116 +541,7 @@ export default function ParentProfileModule({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', fontFamily: 'var(--font-sf-pro-text)' }}>
-      {/* =========================================================
-          HIGH-IMPACT METRICS STRIP: Summary Counter
-          ========================================================= */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '14px'
-        }}
-      >
-        {/* Metric 1: Total Dependents */}
-        <div
-          onClick={() => setFilterStatus('ALL')}
-          style={{
-            background: filterStatus === 'ALL' ? '#eff6ff' : '#ffffff',
-            border: filterStatus === 'ALL' ? '1.5px solid #3b82f6' : '1px solid #e2e8f0',
-            borderRadius: '14px',
-            padding: '16px 20px',
-            cursor: 'pointer',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-            transition: 'all 0.15s ease'
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: '#1e40af' }}>Total Dependents</span>
-            <Users size={16} color="#3b82f6" />
-          </div>
-          <div style={{ fontSize: '26px', fontWeight: 800, color: '#1e3a8a', marginTop: '6px' }}>
-            {totalCount}
-          </div>
-          <div style={{ fontSize: '11px', color: '#60a5fa', marginTop: '2px' }}>
-            Registered Family Children
-          </div>
-        </div>
 
-        {/* Metric 2: Accepted / Approved */}
-        <div
-          onClick={() => setFilterStatus('ACCEPTED')}
-          style={{
-            background: filterStatus === 'ACCEPTED' ? '#f0fdf4' : '#ffffff',
-            border: filterStatus === 'ACCEPTED' ? '1.5px solid #22c55e' : '1px solid #e2e8f0',
-            borderRadius: '14px',
-            padding: '16px 20px',
-            cursor: 'pointer',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-            transition: 'all 0.15s ease'
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: '#15803d' }}>Accepted / Approved</span>
-            <CheckCircle2 size={16} color="#22c55e" />
-          </div>
-          <div style={{ fontSize: '26px', fontWeight: 800, color: '#14532d', marginTop: '6px' }}>
-            {acceptedCount}
-          </div>
-          <div style={{ fontSize: '11px', color: '#4ade80', marginTop: '2px' }}>
-            Full Academic Access Granted
-          </div>
-        </div>
-
-        {/* Metric 3: Pending Approval */}
-        <div
-          onClick={() => setFilterStatus('PENDING')}
-          style={{
-            background: filterStatus === 'PENDING' ? '#fffbeb' : '#ffffff',
-            border: filterStatus === 'PENDING' ? '1.5px solid #f59e0b' : '1px solid #e2e8f0',
-            borderRadius: '14px',
-            padding: '16px 20px',
-            cursor: 'pointer',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-            transition: 'all 0.15s ease'
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: '#b45309' }}>Pending Review</span>
-            <Clock size={16} color="#f59e0b" />
-          </div>
-          <div style={{ fontSize: '26px', fontWeight: 800, color: '#78350f', marginTop: '6px' }}>
-            {pendingCount}
-          </div>
-          <div style={{ fontSize: '11px', color: '#f59e0b', marginTop: '2px' }}>
-            Under School Desk Verification
-          </div>
-        </div>
-
-        {/* Metric 4: Rejected / Action Required */}
-        <div
-          onClick={() => setFilterStatus('REJECTED')}
-          style={{
-            background: filterStatus === 'REJECTED' ? '#fef2f2' : '#ffffff',
-            border: filterStatus === 'REJECTED' ? '1.5px solid #ef4444' : '1px solid #e2e8f0',
-            borderRadius: '14px',
-            padding: '16px 20px',
-            cursor: 'pointer',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-            transition: 'all 0.15s ease'
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: '#b91c1c' }}>Rejected / Incomplete</span>
-            <XCircle size={16} color="#ef4444" />
-          </div>
-          <div style={{ fontSize: '26px', fontWeight: 800, color: '#7f1d1d', marginTop: '6px' }}>
-            {rejectedCount}
-          </div>
-          <div style={{ fontSize: '11px', color: '#f87171', marginTop: '2px' }}>
-            Requires Record Resubmission
-          </div>
-        </div>
-      </div>
 
       {/* Status Alert Banner */}
       {statusMessage && (
@@ -780,27 +671,6 @@ export default function ParentProfileModule({
               </button>
             </div>
 
-            {/* "+ Link New Child" Button */}
-            <button
-              onClick={() => setShowAddModal(true)}
-              style={{
-                background: 'linear-gradient(135deg, #0071e3 0%, #0284c7 100%)',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '10px',
-                padding: '9px 18px',
-                fontSize: '13px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                boxShadow: '0 2px 8px rgba(0, 113, 227, 0.25)',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <Plus size={16} /> Link New Child
-            </button>
           </div>
         </div>
 
@@ -1475,63 +1345,6 @@ export default function ParentProfileModule({
               </button>
             )}
           </div>
-
-          {/* Filter Pills */}
-          <div
-            style={{
-              display: 'flex',
-              gap: '6px',
-              background: '#f8fafc',
-              padding: '4px',
-              borderRadius: '12px',
-              border: '1px solid #e2e8f0'
-            }}
-          >
-            {[
-              { id: 'ALL', label: 'All', count: totalCount },
-              { id: 'ACCEPTED', label: 'Accepted', count: acceptedCount, color: '#16a34a', icon: CheckCircle2 },
-              { id: 'PENDING', label: 'Pending', count: pendingCount, color: '#d97706', icon: Clock },
-              { id: 'REJECTED', label: 'Rejected', count: rejectedCount, color: '#dc2626', icon: XCircle }
-            ].map(tab => {
-              const isActive = filterStatus === tab.id;
-              const IconComponent = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setFilterStatus(tab.id)}
-                  style={{
-                    background: isActive ? '#ffffff' : 'transparent',
-                    border: isActive ? '1px solid #e2e8f0' : 'none',
-                    boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
-                    borderRadius: '8px',
-                    padding: '5px 12px',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    color: isActive ? (tab.color || 'var(--color-ink)') : 'var(--color-slate)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px'
-                  }}
-                >
-                  {IconComponent && <IconComponent size={12} color={tab.color} />}
-                  <span>{tab.label}</span>
-                  <span
-                    style={{
-                      background: isActive ? '#f1f5f9' : '#e2e8f0',
-                      color: 'var(--color-ink)',
-                      borderRadius: '10px',
-                      padding: '1px 6px',
-                      fontSize: '10.5px',
-                      fontWeight: 700
-                    }}
-                  >
-                    {tab.count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
         </div>
 
         {/* -------------------------------------------------------------
@@ -1549,19 +1362,19 @@ export default function ParentProfileModule({
               }}
             >
               <Users size={36} color="var(--color-steel)" style={{ margin: '0 auto 10px' }} />
-              <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--color-ink)' }}>No Child Records Matching Filters</div>
+              <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--color-ink)' }}>No Child Records Found</div>
               <p style={{ color: 'var(--color-slate)', fontSize: '13px', marginTop: '4px', maxWidth: '420px', margin: '4px auto 0' }}>
                 {searchTerm
                   ? `No children matching "${searchTerm}". Clear search to view all.`
-                  : 'No child relationship records found for this status. Click "+ Link New Child" above.'}
+                  : 'No child relationship records found.'}
               </p>
             </div>
           ) : (
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))',
-                gap: '18px'
+                gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+                gap: '16px'
               }}
             >
               {filteredChildren.map(child => {
@@ -1573,7 +1386,11 @@ export default function ParentProfileModule({
                 const statusBg = isAccepted ? '#f0fdf4' : isPending ? '#fffbeb' : '#fef2f2';
                 const statusColor = isAccepted ? '#15803d' : isPending ? '#b45309' : '#b91c1c';
                 const statusBorder = isAccepted ? '#bbf7d0' : isPending ? '#fde68a' : '#fecaca';
-                const statusLabel = isAccepted ? 'ACCEPTED' : isPending ? 'PENDING APPROVAL' : 'REJECTED';
+
+                const studentUserIdVal = child.studentUserId ? `#${child.studentUserId}` : (child.studentUniqueId || child.studentIdentity || '—');
+                const studentIdExtra = child.studentUserId && (child.studentUniqueId || child.studentIdentity) && String(child.studentIdentity) !== String(child.studentUserId)
+                  ? ` (${child.studentUniqueId || child.studentIdentity})`
+                  : '';
 
                 return (
                   <div
@@ -1582,324 +1399,71 @@ export default function ParentProfileModule({
                       background: '#ffffff',
                       border: '1px solid #e2e8f0',
                       borderRadius: '16px',
-                      overflow: 'hidden',
-                      boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
+                      padding: '20px',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
                       display: 'flex',
                       flexDirection: 'column',
+                      gap: '14px',
                       transition: 'all 0.18s ease'
                     }}
                   >
-                    {/* Top Decorative Border Tag */}
-                    <div
-                      style={{
-                        height: '4px',
-                        background: isAccepted ? '#22c55e' : isPending ? '#f59e0b' : '#ef4444'
-                      }}
-                    />
-
-                    <div style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '14px', flex: 1 }}>
-                      {/* Identity Row: Student Avatar, Name, Kinship & Status */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <div
-                            style={{
-                              width: '46px',
-                              height: '46px',
-                              borderRadius: '14px',
-                              background: isAccepted
-                                ? 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)'
-                                : isPending
-                                ? 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)'
-                                : 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
-                              color: isAccepted ? '#15803d' : isPending ? '#b45309' : '#b91c1c',
-                              fontWeight: 800,
-                              fontSize: '18px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
-                            }}
-                          >
-                            {child.childName ? child.childName[0].toUpperCase() : 'C'}
-                          </div>
-                          <div>
-                            <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--color-ink)', letterSpacing: '-0.2px' }}>
-                              {child.childName}
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px', flexWrap: 'wrap' }}>
-                              <span
-                                style={{
-                                  background: '#eff6ff',
-                                  color: '#1d4ed8',
-                                  border: '1px solid #bfdbfe',
-                                  borderRadius: '6px',
-                                  padding: '1px 6px',
-                                  fontSize: '11px',
-                                  fontWeight: 700,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '3px'
-                                }}
-                              >
-                                <IdCard size={11} /> {child.studentUniqueId || child.studentIdentity}
-                              </span>
-                              {(child.studentDetailsId || child.studentDetails) && (
-                                <span
-                                  style={{
-                                    background: '#fef3c7',
-                                    color: '#92400e',
-                                    border: '1px solid #fde68a',
-                                    borderRadius: '6px',
-                                    padding: '1px 6px',
-                                    fontSize: '11px',
-                                    fontWeight: 700,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '3px'
-                                  }}
-                                  title="Referenced from student_details table"
-                                >
-                                  <GraduationCap size={11} color="#d97706" /> student_details
-                                </span>
-                              )}
-                              {(child.studentUserId || child.studentUser?.id) && (
-                                <span
-                                  style={{
-                                    background: '#ecfdf5',
-                                    color: '#047857',
-                                    border: '1px solid #a7f3d0',
-                                    borderRadius: '6px',
-                                    padding: '1px 6px',
-                                    fontSize: '11px',
-                                    fontWeight: 700,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '3px'
-                                  }}
-                                  title="Explicit relationship fetched from users table"
-                                >
-                                  <ShieldCheck size={11} color="#059669" /> User #{child.studentUserId || child.studentUser?.id}
-                                </span>
-                              )}
-                              <span
-                                style={{
-                                  background: '#f1f5f9',
-                                  color: '#475569',
-                                  borderRadius: '6px',
-                                  padding: '1px 6px',
-                                  fontSize: '11px',
-                                  fontWeight: 600
-                                }}
-                              >
-                                {child.relationshipType || 'Child'}
-                              </span>
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '4px' }}>
-                              {(child.studentEmail || child.studentUser?.email) && (
-                                <div style={{ fontSize: '11.5px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                  <Mail size={11} color="#94a3b8" /> {child.studentEmail || child.studentUser?.email}
-                                </div>
-                              )}
-                              <div style={{ fontSize: '11.5px', color: '#475569', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <span style={{ fontWeight: 600, color: 'var(--color-ink)' }}>Parent:</span> {child.parentName || 'Robert Patterson'} {child.parentUniqueId ? `(User #${child.parentUniqueId})` : ''}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Status Badge */}
-                        <div
-                          style={{
-                            background: statusBg,
-                            color: statusColor,
-                            border: `1px solid ${statusBorder}`,
-                            borderRadius: '20px',
-                            padding: '4px 10px',
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '5px',
-                            letterSpacing: '0.02em',
-                            whiteSpace: 'nowrap'
-                          }}
-                        >
-                          {isAccepted && <CheckCircle2 size={13} color="#15803d" />}
-                          {isPending && <Clock size={13} color="#b45309" />}
-                          {isRejected && <XCircle size={13} color="#b91c1c" />}
-                          <span>{statusLabel}</span>
-                        </div>
+                    {/* Header: Children Name & Status Badge */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ fontSize: '17px', fontWeight: 700, color: 'var(--color-ink)', letterSpacing: '-0.2px' }}>
+                        {child.childName || child.studentName || 'Student Name'}
                       </div>
 
-                      {/* Academic Roster Pill */}
+                      {/* Status Badge in Card itself */}
                       <div
                         style={{
-                          background: 'var(--color-studio-mist)',
-                          border: '1px solid #f1f5f9',
-                          borderRadius: '10px',
-                          padding: '10px 14px',
+                          background: statusBg,
+                          color: statusColor,
+                          border: `1px solid ${statusBorder}`,
+                          borderRadius: '20px',
+                          padding: '4px 12px',
+                          fontSize: '12px',
+                          fontWeight: 700,
                           display: 'flex',
-                          justifyContent: 'space-between',
                           alignItems: 'center',
-                          fontSize: '12.5px'
+                          gap: '5px',
+                          letterSpacing: '0.02em',
+                          whiteSpace: 'nowrap'
                         }}
                       >
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-slate)' }}>
-                          <GraduationCap size={15} color="var(--color-steel)" /> Academic Enrollment:
-                        </span>
-                        <span style={{ fontWeight: 700, color: 'var(--color-ink)' }}>
-                          {child.className || 'Grade 10'} • Section {child.section || 'A'}
-                        </span>
-                      </div>
-
-                      {/* Administrative Review Remarks Box */}
-                      <div
-                        style={{
-                          background: '#fafafa',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '10px',
-                          padding: '12px 14px',
-                          fontSize: '12.5px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '4px'
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <span style={{ fontSize: '10.5px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <Building size={11} /> Admin Review Notes
-                          </span>
-                          {child.reviewedBy && (
-                            <span style={{ fontSize: '10.5px', color: 'var(--color-steel)' }}>
-                              by {child.reviewedBy}
-                            </span>
-                          )}
-                        </div>
-                        <div style={{ color: 'var(--color-ink)', lineHeight: '1.4', fontStyle: child.adminRemarks ? 'normal' : 'italic' }}>
-                          {child.adminRemarks || 'Awaiting initial administrative review and identity verification.'}
-                        </div>
+                        {isAccepted && <CheckCircle2 size={13} color="#15803d" />}
+                        {isPending && <Clock size={13} color="#b45309" />}
+                        {isRejected && <XCircle size={13} color="#b91c1c" />}
+                        <span>{isAccepted ? 'Accepted' : isPending ? 'Pending' : 'Rejected'}</span>
                       </div>
                     </div>
 
-                    {/* Bottom Action Footer */}
-                    <div
-                      style={{
-                        background: '#f8fafc',
-                        borderTop: '1px solid #e2e8f0',
-                        padding: '10px 16px',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        flexWrap: 'wrap',
-                        gap: '8px'
-                      }}
-                    >
-                      {isAdmin ? (
-                        <>
-                          <span style={{ fontSize: '11px', color: 'var(--color-slate)', fontWeight: 600 }}>
-                            Admin Decision:
-                          </span>
+                    {/* Student User ID & Grade Section */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '13px' }}>
+                        <span style={{ color: 'var(--color-slate)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <IdCard size={14} color="var(--color-steel)" /> Student User ID:
+                        </span>
+                        <span style={{
+                          background: '#eff6ff',
+                          color: '#1d4ed8',
+                          border: '1px solid #bfdbfe',
+                          borderRadius: '6px',
+                          padding: '2px 8px',
+                          fontSize: '12px',
+                          fontWeight: 700
+                        }}>
+                          {studentUserIdVal}{studentIdExtra}
+                        </span>
+                      </div>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <button
-                              onClick={() => handleStatusUpdate(child.id, 'ACCEPTED', 'Verified and accepted by administration.')}
-                              disabled={isAccepted}
-                              style={{
-                                background: isAccepted ? '#dcfce7' : '#ffffff',
-                                border: `1px solid ${isAccepted ? '#86efac' : '#cbd5e1'}`,
-                                color: isAccepted ? '#15803d' : 'var(--color-slate)',
-                                borderRadius: '6px',
-                                padding: '3px 8px',
-                                fontSize: '11px',
-                                fontWeight: 700,
-                                cursor: isAccepted ? 'default' : 'pointer',
-                                transition: 'all 0.15s ease'
-                              }}
-                              title="Mark Accepted"
-                            >
-                              ✓ Accept
-                            </button>
-                            <button
-                              onClick={() => handleStatusUpdate(child.id, 'PENDING', 'Marked for verification follow-up.')}
-                              disabled={isPending}
-                              style={{
-                                background: isPending ? '#fef3c7' : '#ffffff',
-                                border: `1px solid ${isPending ? '#fde68a' : '#cbd5e1'}`,
-                                color: isPending ? '#b45309' : 'var(--color-slate)',
-                                borderRadius: '6px',
-                                padding: '3px 8px',
-                                fontSize: '11px',
-                                fontWeight: 700,
-                                cursor: isPending ? 'default' : 'pointer'
-                              }}
-                              title="Mark Pending"
-                            >
-                              ⏳ Pending
-                            </button>
-                            <button
-                              onClick={() => handleStatusUpdate(child.id, 'REJECTED', 'Student ID does not match current school enrollment.')}
-                              disabled={isRejected}
-                              style={{
-                                background: isRejected ? '#fee2e2' : '#ffffff',
-                                border: `1px solid ${isRejected ? '#fca5a5' : '#cbd5e1'}`,
-                                color: isRejected ? '#b91c1c' : 'var(--color-slate)',
-                                borderRadius: '6px',
-                                padding: '3px 8px',
-                                fontSize: '11px',
-                                fontWeight: 700,
-                                cursor: isRejected ? 'default' : 'pointer'
-                              }}
-                              title="Mark Rejected"
-                            >
-                              ✕ Reject
-                            </button>
-                            <button
-                              onClick={() => handleDeleteRelationship(child.id)}
-                              style={{
-                                background: '#ffffff',
-                                border: '1px solid #cbd5e1',
-                                color: 'var(--color-steel)',
-                                borderRadius: '6px',
-                                padding: '3px 6px',
-                                fontSize: '11px',
-                                cursor: 'pointer'
-                              }}
-                              title="Unlink Child Record"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          </div>
-                        </>
-                      ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                          <span style={{ fontSize: '12px', color: statusColor, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px' }}>
-                            {isAccepted && <CheckCircle size={13} color="#15803d" />}
-                            {isPending && <Clock size={13} color="#b45309" />}
-                            {isRejected && <XCircle size={13} color="#b91c1c" />}
-                            {isAccepted ? 'Verified Family Dependent • Active' : isPending ? 'Awaiting Administration Verification' : 'Verification Denied by Admin'}
-                          </span>
-                          <button
-                            onClick={() => handleDeleteRelationship(child.id)}
-                            style={{
-                              background: '#ffffff',
-                              border: '1px solid #e2e8f0',
-                              color: '#64748b',
-                              borderRadius: '6px',
-                              padding: '3px 8px',
-                              fontSize: '11px',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              transition: 'all 0.15s ease'
-                            }}
-                            title="Unlink child from your profile"
-                          >
-                            <Trash2 size={12} color="#94a3b8" /> Unlink
-                          </button>
-                        </div>
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '13px' }}>
+                        <span style={{ color: 'var(--color-slate)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <GraduationCap size={14} color="var(--color-steel)" /> Grade & Section:
+                        </span>
+                        <span style={{ fontWeight: 600, color: 'var(--color-ink)' }}>
+                          {child.className || (child.classStandard ? `Grade ${child.classStandard}` : 'Grade 10')} - Section {child.section || child.sectionName || 'A'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 );
@@ -1916,13 +1480,10 @@ export default function ParentProfileModule({
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: 'var(--color-slate)' }}>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Student Unique ID & Name</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Parent Details (users Table)</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Kinship</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Class & Section</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Admin Status</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Verification Notes</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>{isAdmin ? 'Admin Controls' : 'Action'}</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Children Name</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Student User ID</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Grade & Section</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -1936,64 +1497,28 @@ export default function ParentProfileModule({
                   const statusColor = isAccepted ? '#15803d' : isPending ? '#b45309' : '#b91c1c';
                   const statusBorder = isAccepted ? '#bbf7d0' : isPending ? '#fde68a' : '#fecaca';
 
+                  const studentUserIdVal = child.studentUserId ? `#${child.studentUserId}` : (child.studentUniqueId || child.studentIdentity || '—');
+
                   return (
                     <tr key={child.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '14px 16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <div
-                            style={{
-                              width: '32px',
-                              height: '32px',
-                              borderRadius: '8px',
-                              background: '#eff6ff',
-                              color: '#2563eb',
-                              fontWeight: 700,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '13px'
-                            }}
-                          >
-                            {child.childName ? child.childName[0].toUpperCase() : 'C'}
-                          </div>
-                          <div>
-                            <div style={{ fontWeight: 600, color: 'var(--color-ink)' }}>{child.childName}</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px', flexWrap: 'wrap' }}>
-                              <span style={{ fontSize: '11px', color: '#1d4ed8', fontWeight: 700, background: '#eff6ff', padding: '1px 5px', borderRadius: '4px', border: '1px solid #bfdbfe' }}>
-                                {child.studentUniqueId || child.studentIdentity}
-                              </span>
-                              {(child.studentDetailsId || child.studentDetails) && (
-                                <span style={{ fontSize: '10px', color: '#854d0e', background: '#fef9c3', border: '1px solid #fde047', borderRadius: '4px', padding: '0 4px', fontWeight: 700 }}>
-                                  student_details
-                                </span>
-                              )}
-                              {(child.studentUserId || child.studentUser?.id) && (
-                                <span style={{ fontSize: '10px', color: '#047857', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '4px', padding: '0 4px', fontWeight: 700 }}>
-                                  User #{child.studentUserId || child.studentUser?.id}
-                                </span>
-                              )}
-                            </div>
-                            {(child.studentEmail || child.studentUser?.email) && (
-                              <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '2px' }}>
-                                {child.studentEmail || child.studentUser?.email}
-                              </div>
-                            )}
-                          </div>
-                        </div>
+                      <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--color-ink)' }}>
+                        {child.childName || child.studentName || 'Student Name'}
                       </td>
                       <td style={{ padding: '14px 16px' }}>
-                        <div style={{ fontWeight: 600, color: 'var(--color-ink)' }}>{child.parentName || 'Robert Patterson'}</div>
-                        <div style={{ fontSize: '11px', color: '#475569' }}>
-                          Unique ID: #{child.parentUniqueId || child.parentUserId || 50}
-                        </div>
-                      </td>
-                      <td style={{ padding: '14px 16px', color: 'var(--color-ink)' }}>
-                        {child.relationshipType}
-                      </td>
-                      <td style={{ padding: '14px 16px', color: 'var(--color-ink)' }}>
-                        <span style={{ background: '#f1f5f9', padding: '2px 8px', borderRadius: '6px', fontSize: '12px', fontWeight: 600 }}>
-                          {child.className} - {child.section}
+                        <span style={{
+                          background: '#eff6ff',
+                          color: '#1d4ed8',
+                          border: '1px solid #bfdbfe',
+                          borderRadius: '6px',
+                          padding: '2px 8px',
+                          fontSize: '12px',
+                          fontWeight: 700
+                        }}>
+                          {studentUserIdVal}
                         </span>
+                      </td>
+                      <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--color-ink)' }}>
+                        {child.className || (child.classStandard ? `Grade ${child.classStandard}` : 'Grade 10')} - Section {child.section || child.sectionName || 'A'}
                       </td>
                       <td style={{ padding: '14px 16px' }}>
                         <span
@@ -2013,87 +1538,8 @@ export default function ParentProfileModule({
                           {isAccepted && <CheckCircle2 size={12} />}
                           {isPending && <Clock size={12} />}
                           {isRejected && <XCircle size={12} />}
-                          {child.status}
+                          {isAccepted ? 'Accepted' : isPending ? 'Pending' : 'Rejected'}
                         </span>
-                      </td>
-                      <td style={{ padding: '14px 16px', color: 'var(--color-slate)', maxWidth: '240px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {child.adminRemarks || '—'}
-                      </td>
-                      <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                        {isAdmin ? (
-                          <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
-                            <button
-                              onClick={() => handleStatusUpdate(child.id, 'ACCEPTED', 'Verified and accepted.')}
-                              disabled={isAccepted}
-                              style={{
-                                padding: '3px 8px',
-                                borderRadius: '6px',
-                                border: '1px solid #86efac',
-                                background: isAccepted ? '#dcfce7' : '#fff',
-                                color: '#15803d',
-                                fontSize: '11px',
-                                fontWeight: 700,
-                                cursor: isAccepted ? 'default' : 'pointer'
-                              }}
-                            >
-                              Accept
-                            </button>
-                            <button
-                              onClick={() => handleStatusUpdate(child.id, 'PENDING', 'Under administrative review.')}
-                              disabled={isPending}
-                              style={{
-                                padding: '3px 8px',
-                                borderRadius: '6px',
-                                border: '1px solid #fde68a',
-                                background: isPending ? '#fef3c7' : '#fff',
-                                color: '#b45309',
-                                fontSize: '11px',
-                                fontWeight: 700,
-                                cursor: isPending ? 'default' : 'pointer'
-                              }}
-                            >
-                              Pending
-                            </button>
-                            <button
-                              onClick={() => handleStatusUpdate(child.id, 'REJECTED', 'Verification rejected.')}
-                              disabled={isRejected}
-                              style={{
-                                padding: '3px 8px',
-                                borderRadius: '6px',
-                                border: '1px solid #fca5a5',
-                                background: isRejected ? '#fee2e2' : '#fff',
-                                color: '#b91c1c',
-                                fontSize: '11px',
-                                fontWeight: 700,
-                                cursor: isRejected ? 'default' : 'pointer'
-                              }}
-                            >
-                              Reject
-                            </button>
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                            <button
-                              onClick={() => handleDeleteRelationship(child.id)}
-                              style={{
-                                background: '#ffffff',
-                                border: '1px solid #e2e8f0',
-                                color: '#64748b',
-                                borderRadius: '6px',
-                                padding: '4px 10px',
-                                fontSize: '11px',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px'
-                              }}
-                              title="Unlink child record"
-                            >
-                              <Trash2 size={12} color="#94a3b8" /> Unlink
-                            </button>
-                          </div>
-                        )}
                       </td>
                     </tr>
                   );
@@ -2105,293 +1551,6 @@ export default function ParentProfileModule({
         </>
         )}
       </div>
-
-      {/* =========================================================
-          MODAL 1: Link New Child Request (Ultra Clean)
-          ========================================================= */}
-      {showAddModal && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(15, 23, 42, 0.55)',
-            backdropFilter: 'blur(6px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            padding: '20px'
-          }}
-        >
-          <div
-            style={{
-              background: '#ffffff',
-              borderRadius: '20px',
-              padding: '28px',
-              width: '100%',
-              maxWidth: '540px',
-              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
-              border: '1px solid #e2e8f0',
-              maxHeight: '92vh',
-              overflowY: 'auto'
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <HeartHandshake size={22} />
-                </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--color-ink)' }}>
-                    Link New Dependent Child
-                  </h3>
-                  <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-slate)' }}>
-                    Register family link for administrative verification & portal access
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowAddModal(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-slate)' }}
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddChild} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* Option A: Select Enrolled Student from student_details Table */}
-              <div style={{ background: '#fefce8', border: '1px solid #fef08a', borderRadius: '12px', padding: '14px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: 700, color: '#854d0e', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <GraduationCap size={15} color="#ca8a04" /> Select from Enrolled Students (student_details Table)
-                  </label>
-                  <span style={{ fontSize: '11px', color: '#854d0e', fontWeight: 700, background: '#fef9c3', padding: '2px 8px', borderRadius: '6px', border: '1px solid #fde047' }}>
-                    student_details Reference
-                  </span>
-                </div>
-                <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#713f12' }}>
-                  Cross-references student unique ID (ADM-ID), official grade standard, section, and registered parent name from <code>student_details</code>.
-                </p>
-                <select
-                  value={selectedStudentDetailId}
-                  onChange={e => {
-                    const val = e.target.value;
-                    setSelectedStudentDetailId(val);
-                    if (!val) {
-                      setNewChildForm(prev => ({ ...prev, studentDetailsId: null }));
-                    } else {
-                      const found = studentDetailsList.find(s => String(s.id) === String(val));
-                      if (found) {
-                        setNewChildForm(prev => ({
-                          ...prev,
-                          studentDetailsId: found.id,
-                          childName: `${found.firstName} ${found.lastName}`.trim(),
-                          studentIdentity: found.studentId,
-                          className: `Grade ${found.classStandard}`,
-                          section: found.sectionName
-                        }));
-                      }
-                    }
-                  }}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #fde047', fontSize: '13px', background: '#fff' }}
-                >
-                  <option value="">-- Choose student from student_details table --</option>
-                  {studentDetailsList.map(student => (
-                    <option key={student.id} value={student.id}>
-                      {student.firstName} {student.lastName} ({student.studentId} • Grade {student.classStandard}-{student.sectionName} • Parent: {student.parentName})
-                    </option>
-                  ))}
-                </select>
-                {selectedStudentDetailId && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', fontSize: '12px', color: '#854d0e', fontWeight: 600 }}>
-                    <CheckCircle2 size={13} color="#ca8a04" /> Connected to student_details record #{selectedStudentDetailId} ({newChildForm.studentIdentity})
-                  </div>
-                )}
-              </div>
-
-              {/* Option B: Select from users Table */}
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: 700, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Users size={15} color="#2563eb" /> Or Select User Account (users Table)
-                  </label>
-                  <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: 600, background: '#eff6ff', padding: '2px 8px', borderRadius: '6px', border: '1px solid #bfdbfe' }}>
-                    users Table Link
-                  </span>
-                </div>
-                <select
-                  value={selectedStudentUserId}
-                  onChange={e => {
-                    const val = e.target.value;
-                    setSelectedStudentUserId(val);
-                    if (!val) {
-                      setNewChildForm(prev => ({
-                        ...prev,
-                        studentUserId: null
-                      }));
-                    } else {
-                      const found = registeredStudents.find(s => String(s.id) === String(val));
-                      if (found) {
-                        setNewChildForm(prev => ({
-                          ...prev,
-                          studentUserId: found.id,
-                          childName: `${found.firstName} ${found.lastName}`.trim(),
-                          studentIdentity: found.username || `STU-${found.id}`
-                        }));
-                      }
-                    }
-                  }}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', background: '#fff' }}
-                >
-                  <option value="">-- Choose from registered user accounts --</option>
-                  {registeredStudents.map(student => (
-                    <option key={student.id} value={student.id}>
-                      {student.firstName} {student.lastName} (User #{student.id} • @{student.username} • {student.email})
-                    </option>
-                  ))}
-                </select>
-                {selectedStudentUserId && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', fontSize: '12px', color: '#15803d', fontWeight: 600 }}>
-                    <CheckCircle2 size={13} color="#16a34a" /> Linked to User #{selectedStudentUserId} in users table
-                  </div>
-                )}
-              </div>
-
-              {/* Child Full Name */}
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '6px' }}>
-                  Child Full Name *
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Lucas Patterson"
-                  value={newChildForm.childName}
-                  onChange={e => setNewChildForm({ ...newChildForm, childName: e.target.value })}
-                  required
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none' }}
-                />
-              </div>
-
-              {/* Student User Identity */}
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '6px' }}>
-                  Student User Identity / Student ID *
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. STU-1042"
-                  value={newChildForm.studentIdentity}
-                  onChange={e => setNewChildForm({ ...newChildForm, studentIdentity: e.target.value })}
-                  required
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none' }}
-                />
-                <span style={{ fontSize: '11px', color: 'var(--color-slate)', marginTop: '4px', display: 'block' }}>
-                  Matched against official campus admissions and student directory records.
-                </span>
-              </div>
-
-              {/* Class and Section */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '6px' }}>
-                    Academic Grade / Standard *
-                  </label>
-                  <select
-                    value={newChildForm.className}
-                    onChange={e => setNewChildForm({ ...newChildForm, className: e.target.value })}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '14px', background: '#fff' }}
-                  >
-                    {[1,2,3,4,5,6,7,8,9,10,11,12].map(g => (
-                      <option key={g} value={`Grade ${g}`}>Grade {g}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '6px' }}>
-                    Section *
-                  </label>
-                  <select
-                    value={newChildForm.section}
-                    onChange={e => setNewChildForm({ ...newChildForm, section: e.target.value })}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '14px', background: '#fff' }}
-                  >
-                    <option value="A">Section A</option>
-                    <option value="B">Section B</option>
-                    <option value="C">Section C</option>
-                    <option value="D">Section D</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Relationship Type */}
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '6px' }}>
-                  Legal Kinship / Relationship to Child *
-                </label>
-                <select
-                  value={newChildForm.relationshipType}
-                  onChange={e => setNewChildForm({ ...newChildForm, relationshipType: e.target.value })}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '14px', background: '#fff' }}
-                >
-                  <option value="Father">Father</option>
-                  <option value="Mother">Mother</option>
-                  <option value="Legal Guardian">Legal Guardian</option>
-                  <option value="Foster Parent">Foster Parent</option>
-                </select>
-              </div>
-
-              {/* Supporting Document / Notes */}
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '6px' }}>
-                  Verification Reference Note
-                </label>
-                <textarea
-                  placeholder="e.g. Birth certificate registration number or previous school transfer certificate reference."
-                  value={newChildForm.notes}
-                  onChange={e => setNewChildForm({ ...newChildForm, notes: e.target.value })}
-                  rows={2}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '13px', resize: 'vertical' }}
-                />
-              </div>
-
-              {/* Action Buttons */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  style={{ padding: '10px 18px', borderRadius: '10px', border: '1px solid #cbd5e1', background: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  style={{
-                    padding: '10px 22px',
-                    borderRadius: '10px',
-                    border: 'none',
-                    background: 'linear-gradient(135deg, #0071e3 0%, #0284c7 100%)',
-                    color: '#fff',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    cursor: submitting ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    boxShadow: '0 2px 6px rgba(0, 113, 227, 0.25)'
-                  }}
-                >
-                  {submitting ? 'Submitting...' : 'Submit Link Request'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* =========================================================
           MODAL 2: Edit Contact Information Modal

@@ -40,7 +40,8 @@ $services = @(
     @{ Name = "student-examination-service"; Path = "backend/student-examination-service"; Port = 8098 },
     @{ Name = "teacher-lesson-notes-service"; Path = "backend/teacher-lesson-notes-service"; Port = 8089 },
     @{ Name = "student-study-resource-service"; Path = "backend/student-study-resource-service"; Port = 8100 },
-    @{ Name = "parent-profile-service"; Path = "backend/parent-profile-service"; Port = 8101 }
+    @{ Name = "parent-profile-service"; Path = "backend/parent-profile-service"; Port = 8101 },
+    @{ Name = "parent-child-academic-service"; Path = "backend/parent-child-academic-service"; Port = 8102 }
 )
 
 # 0. Check Database status (port 3306)
@@ -89,7 +90,7 @@ if (-not $eurekaConn) {
 
     Write-Host "[Eureka] Waiting for Eureka Server to initialize on port 8761..." -ForegroundColor DarkYellow
     $eurekaWait = 0
-    while ($eurekaWait -lt 30) {
+    while ($eurekaWait -lt 70) {
         Start-Sleep -Milliseconds 500
         $eurekaConn = Get-NetTCPConnection -LocalPort 8761 -State Listen -ErrorAction SilentlyContinue
         if ($eurekaConn) { 

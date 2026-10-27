@@ -32,5 +32,6 @@
         <module>teacher-lesson-notes-service</module>
         <module>student-study-resource-service</module>
         <module>parent-profile-service</module>
+        <module>parent-child-academic-service</module>
     </modules>
 </project>
