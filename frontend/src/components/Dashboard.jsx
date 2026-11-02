@@ -30,6 +30,7 @@ import TeacherPortalModule from './TeacherPortalModule';
 import StaffPortalModule from './StaffPortalModule';
 import ParentProfileModule from './ParentProfileModule';
 import ChildAcademicsModule from './ChildAcademicsModule';
+import ParentTuitionFeeModule from './ParentTuitionFeeModule';
 
 export default function Dashboard({ user, token, onLogout }) {
   const decodedClaims = decodeJwt(token);
@@ -531,15 +532,11 @@ export default function Dashboard({ user, token, onLogout }) {
 
               {/* PARENT: Tuition & Fees Module */}
               {isParent && selectedModule === 'fees' && (
-                <div style={{ textAlign: 'center', padding: '48px 24px', background: 'var(--color-studio-mist)', borderRadius: '16px' }}>
-                  <CreditCard size={36} color="#d97706" style={{ margin: '0 auto 12px' }} />
-                  <h4 style={{ fontSize: '17px', fontWeight: '600', color: 'var(--color-ink)' }}>
-                    Institutional Fee Statements & Invoices
-                  </h4>
-                  <p style={{ color: 'var(--color-slate)', fontSize: '14px', maxWidth: '480px', margin: '6px auto 0' }}>
-                    All term tuition fees and laboratory dues are synchronized with institutional accounting records.
-                  </p>
-                </div>
+                <ParentTuitionFeeModule
+                  user={user}
+                  decodedClaims={decodedClaims}
+                  currentRole={currentRole}
+                />
               )}
             </div>
           </div>

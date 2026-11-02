@@ -30,9 +30,11 @@ import {
   Coffee,
   User,
   Layers,
-  Activity
+  Activity,
+  CreditCard
 } from 'lucide-react';
 import StaffExaminationModule from './StaffExaminationModule';
+import StaffFeeManagementModule from './StaffFeeManagementModule';
 
 export default function StaffPortalModule({ user }) {
   const [activeTab, setActiveTab] = useState('module1');
@@ -784,11 +786,12 @@ export default function StaffPortalModule({ user }) {
     },
     {
       id: 'module5',
-      title: 'Administration',
-      tag: 'Reports & Analytics',
-      icon: <ShieldCheck size={18} />,
-      theme: { bg: '#fffbeb', color: '#d97706', border: '#fef3c7' },
-      desc: 'Administrative reporting and school analytics.'
+      title: 'Fee & Payment Management',
+      subtitle: 'Student Fee Directory & Installments',
+      tag: 'Tuition & Installments',
+      icon: <CreditCard size={18} />,
+      theme: { bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0' },
+      desc: 'Tuition fees, 4-installment payment tracking, class-wise cards, and receipt logs.'
     }
   ];
 
@@ -2294,17 +2297,8 @@ export default function StaffPortalModule({ user }) {
                   /* MODULE 4: EXAMINATIONS & RECORDINGS */
                   <StaffExaminationModule user={user} showToast={showToast} />
                 ) : (
-                  /* MODULE 5 WORKSPACE PLACEHOLDER */
-                  <div style={{ background: 'var(--color-gallery-white)', borderRadius: 'var(--radius-cards)', border: '1px solid var(--color-hairline-silver)', padding: 'var(--spacing-28)', textAlign: 'center' }}>
-                    <div style={{ background: 'var(--color-studio-mist)', border: '1px dashed var(--color-hairline-silver)', borderRadius: '20px', padding: '48px 20px' }}>
-                      <h4 style={{ color: 'var(--color-ink)', fontSize: '16px', fontWeight: '600', margin: 0 }}>
-                        {mod.subtitle}
-                      </h4>
-                      <p style={{ color: 'var(--color-slate)', fontSize: '13px', marginTop: '6px', maxWidth: '400px', margin: '6px auto 0 auto', lineHeight: '1.5' }}>
-                        This module workspace is currently synchronized with staff administrative systems.
-                      </p>
-                    </div>
-                  </div>
+                  /* MODULE 5: FEE & PAYMENT MANAGEMENT */
+                  <StaffFeeManagementModule user={user} showToast={showToast} />
                 )}
               </div>
             );

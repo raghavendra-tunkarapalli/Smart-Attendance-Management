@@ -1,7 +1,8 @@
 param(
     [switch]$NoWait,
     [switch]$Watch,
-    [switch]$Rebuild
+    [switch]$Rebuild,
+    [switch]$ExitWhenReady
 )
 
 # Create logs directory if it doesn't exist
@@ -41,7 +42,9 @@ $services = @(
     @{ Name = "teacher-lesson-notes-service"; Path = "backend/teacher-lesson-notes-service"; Port = 8089 },
     @{ Name = "student-study-resource-service"; Path = "backend/student-study-resource-service"; Port = 8100 },
     @{ Name = "parent-profile-service"; Path = "backend/parent-profile-service"; Port = 8101 },
-    @{ Name = "parent-child-academic-service"; Path = "backend/parent-child-academic-service"; Port = 8102 }
+    @{ Name = "parent-child-academic-service"; Path = "backend/parent-child-academic-service"; Port = 8102 },
+    @{ Name = "staff-fee-management-service"; Path = "backend/staff-fee-management-service"; Port = 8103 },
+    @{ Name = "parent-tuition-fee-service"; Path = "backend/parent-tuition-fee-service"; Port = 8104 }
 )
 
 # 0. Check Database status (port 3306)
@@ -60,11 +63,11 @@ foreach ($svc in $services) {
 }
 
 if ($missingJars -gt 0 -or $Rebuild) {
-    Write-Host "[Build] Compiling all 21 microservices concurrently (-T 1C)..." -ForegroundColor Yellow
+    Write-Host "[Build] Compiling microservices concurrently (-T 1C)..." -ForegroundColor Yellow
     mvn -f (Join-Path $PSScriptRoot "backend/pom.xml") package -DskipTests -T 1C | Out-Null
     Write-Host "[Build] Build complete!" -ForegroundColor Green
 } else {
-    Write-Host "[Build] Pre-compiled JARs verified for all 21 services. Skipping Maven build." -ForegroundColor Green
+    Write-Host "[Build] Pre-compiled JARs verified for all $($services.Count) services. Skipping Maven build." -ForegroundColor Green
 }
 
 # 2. Start Frontend (Vite)
@@ -104,7 +107,7 @@ if (-not $eurekaConn) {
 }
 
 # 4. Start API Gateway and all microservices in parallel
-Write-Host "[Microservices] Launching API Gateway and 19 domain services in parallel..." -ForegroundColor Cyan
+Write-Host "[Microservices] Launching API Gateway and domain services..." -ForegroundColor Cyan
 $otherServices = $services | Where-Object { $_.Name -ne "eureka-server" }
 
 foreach ($svc in $otherServices) {
@@ -116,12 +119,13 @@ foreach ($svc in $otherServices) {
         
         Write-Host "  -> Spawning $($svc.Name) (: $($svc.Port))..." -ForegroundColor Yellow
         Start-Process -FilePath "java.exe" -ArgumentList "$jvmArgs -jar `"$jarPath`"" -WorkingDirectory (Join-Path $PSScriptRoot $svc.Path) -NoNewWindow -RedirectStandardOutput $logOut -RedirectStandardError $logErr
+        Start-Sleep -Milliseconds 200
     } else {
         Write-Host "  -> $($svc.Name) already running (: $($svc.Port))" -ForegroundColor DarkGreen
     }
 }
 
-Write-Host "`nAll processes spawned successfully in parallel!" -ForegroundColor Green
+Write-Host "`nAll processes spawned successfully!" -ForegroundColor Green
 
 if ($NoWait) {
     Write-Host "Services are starting up in background. Check 'logs' folder for output." -ForegroundColor Cyan
@@ -130,14 +134,18 @@ if ($NoWait) {
     $maxCheck = 120
     $iteration = 0
     $allPorts = @(5173) + ($services | ForEach-Object { $_.Port }) | Select-Object -Unique
+    $lastReported = -1
 
     while ($iteration -lt $maxCheck) {
-        Start-Sleep -Seconds 1
+        Start-Sleep -Seconds 2
         $activeConns = Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalPort -in $allPorts }
         $activePorts = $activeConns | Select-Object -ExpandProperty LocalPort -Unique
         $readyCount = if ($activePorts) { ($activePorts | Measure-Object).Count } else { 0 }
         $totalCount = $allPorts.Count
-        Write-Host "[$([DateTime]::Now.ToString('HH:mm:ss'))] Ready services: $readyCount / $totalCount" -ForegroundColor Cyan
+        if ($readyCount -ne $lastReported -or ($iteration % 5 -eq 0)) {
+            Write-Host "[$([DateTime]::Now.ToString('HH:mm:ss'))] Ready services: $readyCount / $totalCount" -ForegroundColor Cyan
+            $lastReported = $readyCount
+        }
         
         if ($readyCount -ge $totalCount) {
             Write-Host "All $totalCount services are now ONLINE and LISTENING!" -ForegroundColor Green
@@ -156,7 +164,8 @@ Write-Host "Eureka Dashboard:  http://localhost:8761" -ForegroundColor Green
 Write-Host "Logs Location:     $LogDir" -ForegroundColor Gray
 Write-Host "==========================================================" -ForegroundColor Green
 
-if (-not $NoWait) {
+if (-not $NoWait -and -not $ExitWhenReady) {
     Write-Host "Services are running. Launcher will remain active in background." -ForegroundColor Cyan
     while ($true) { Start-Sleep -Seconds 3600 }
 }
+

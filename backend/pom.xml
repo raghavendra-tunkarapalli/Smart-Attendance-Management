@@ -33,5 +33,7 @@
         <module>student-study-resource-service</module>
         <module>parent-profile-service</module>
         <module>parent-child-academic-service</module>
+        <module>staff-fee-management-service</module>
+        <module>parent-tuition-fee-service</module>
     </modules>
 </project>

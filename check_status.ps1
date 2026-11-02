@@ -22,7 +22,9 @@ $services = @(
     @{ Name = "student-examination-service"; Port = 8098 },
     @{ Name = "student-study-resource-service"; Port = 8100 },
     @{ Name = "parent-profile-service"; Port = 8101 },
-    @{ Name = "parent-child-academic-service"; Port = 8102 }
+    @{ Name = "parent-child-academic-service"; Port = 8102 },
+    @{ Name = "staff-fee-management-service"; Port = 8103 },
+    @{ Name = "parent-tuition-fee-service"; Port = 8104 }
 )
 
 $activeConns = Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue
