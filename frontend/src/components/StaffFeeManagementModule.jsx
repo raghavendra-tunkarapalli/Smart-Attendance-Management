@@ -49,24 +49,36 @@ export default function StaffFeeManagementModule({ user, showToast }) {
   const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [paymentRemarks, setPaymentRemarks] = useState('');
 
+  // Resilient Dual-Endpoint Fetch Helper (tries API Gateway, then falls back to direct service port)
+  const apiFetch = async (endpoint, options = {}) => {
+    let res = null;
+    try {
+      res = await fetch(`${API_BASE}${endpoint}`, options);
+      if (res && res.ok) return res;
+    } catch {}
+
+    try {
+      res = await fetch(`${API_FALLBACK}${endpoint}`, options);
+      if (res && res.ok) return res;
+    } catch (e) {
+      console.warn(`Direct fetch to ${API_FALLBACK}${endpoint} failed:`, e);
+    }
+    return res;
+  };
+
   const fetchFeeData = async () => {
     setLoading(true);
     try {
-      let studentsRes;
-      let summaryRes;
-      try {
-        studentsRes = await fetch(`${API_BASE}/students`);
-        summaryRes = await fetch(`${API_BASE}/summary`);
-      } catch (err) {
-        studentsRes = await fetch(`${API_FALLBACK}/students`);
-        summaryRes = await fetch(`${API_FALLBACK}/summary`);
-      }
-
-      if (studentsRes.ok) {
+      const studentsRes = await apiFetch('/students');
+      if (studentsRes && studentsRes.ok) {
         const studentData = await studentsRes.json();
         setStudents(studentData);
+      } else {
+        console.warn('Could not load student fee records from API');
       }
-      if (summaryRes.ok) {
+
+      const summaryRes = await apiFetch('/summary');
+      if (summaryRes && summaryRes.ok) {
         const summaryData = await summaryRes.json();
         setSummary(summaryData);
       }
@@ -85,18 +97,13 @@ export default function StaffFeeManagementModule({ user, showToast }) {
   const handleSyncStudents = async () => {
     setSyncing(true);
     try {
-      let res;
-      try {
-        res = await fetch(`${API_BASE}/sync`, { method: 'POST' });
-      } catch {
-        res = await fetch(`${API_FALLBACK}/sync`, { method: 'POST' });
-      }
-      if (res.ok) {
+      const res = await apiFetch('/sync', { method: 'POST' });
+      if (res && res.ok) {
         const data = await res.json();
         if (showToast) showToast(`Synced student fee records successfully (${data.syncedCount || 0} updated)`, 'success');
         fetchFeeData();
       } else {
-        if (showToast) showToast('Sync failed. Please try again.', 'error');
+        if (showToast) showToast('Sync failed. Please ensure the fee management service is running.', 'error');
       }
     } catch (e) {
       console.error('Sync error:', e);
@@ -116,22 +123,13 @@ export default function StaffFeeManagementModule({ user, showToast }) {
         remarks: paymentRemarks || `Installment ${installmentNum} paid by parent/guardian`
       };
 
-      let res;
-      try {
-        res = await fetch(`${API_BASE}/students/${selectedStudent.studentId}/pay`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-      } catch {
-        res = await fetch(`${API_FALLBACK}/students/${selectedStudent.studentId}/pay`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-      }
+      const res = await apiFetch(`/students/${selectedStudent.studentId}/pay`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
 
-      if (res.ok) {
+      if (res && res.ok) {
         const updated = await res.json();
         setSelectedStudent(updated);
         // update local state
@@ -139,13 +137,19 @@ export default function StaffFeeManagementModule({ user, showToast }) {
         if (showToast) showToast(`Installment ${installmentNum} paid successfully for ${updated.firstName}!`, 'success');
         // Refresh summary
         try {
-          const sumRes = await fetch(`${API_BASE}/summary`);
-          if (sumRes.ok) setSummary(await sumRes.json());
+          const sumRes = await apiFetch('/summary');
+          if (sumRes && sumRes.ok) setSummary(await sumRes.json());
         } catch {}
         setPaymentModalOpen(false);
       } else {
-        const err = await res.json();
-        if (showToast) showToast(`Payment failed: ${err.error || 'Server error'}`, 'error');
+        let errMessage = 'Server error';
+        if (res) {
+          try {
+            const err = await res.json();
+            if (err?.error) errMessage = err.error;
+          } catch {}
+        }
+        if (showToast) showToast(`Payment failed: ${errMessage}`, 'error');
       }
     } catch (e) {
       console.error('Payment error:', e);
@@ -315,6 +319,150 @@ export default function StaffFeeManagementModule({ user, showToast }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-20)', width: '100%', minWidth: 0 }}>
 
+      {/* INSTITUTIONAL FEE SUMMARY KPI CARDS */}
+      {summary && (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: 'var(--spacing-16)',
+          width: '100%'
+        }}>
+          {/* Card 1: Total Projected Fee */}
+          <div style={{
+            background: 'var(--color-gallery-white)',
+            border: '1px solid var(--color-hairline-silver)',
+            borderRadius: 'var(--radius-cards)',
+            padding: '18px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--color-slate)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Total Projected Fee
+              </span>
+              <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Building size={16} />
+              </div>
+            </div>
+            <div style={{ fontSize: '22px', fontWeight: '700', color: 'var(--color-ink)' }}>
+              {formatCurrency(summary.totalExpectedAmount)}
+            </div>
+            <div style={{ fontSize: '11.5px', color: 'var(--color-slate)' }}>
+              Across {summary.totalStudents || students.length} registered students
+            </div>
+          </div>
+
+          {/* Card 2: Total Realized Collections */}
+          <div style={{
+            background: 'var(--color-gallery-white)',
+            border: '1px solid #bbf7d0',
+            borderRadius: 'var(--radius-cards)',
+            padding: '18px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '12px', fontWeight: '600', color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Total Collected
+              </span>
+              <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <DollarSign size={16} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+              <div style={{ fontSize: '22px', fontWeight: '700', color: '#15803d' }}>
+                {formatCurrency(summary.totalCollectedAmount)}
+              </div>
+              <span style={{
+                fontSize: '11.5px',
+                fontWeight: '700',
+                color: '#15803d',
+                background: '#dcfce7',
+                padding: '2px 8px',
+                borderRadius: '6px',
+                border: '1px solid #86efac'
+              }}>
+                {summary.collectionPercentage}%
+              </span>
+            </div>
+            {/* Progress Bar */}
+            <div style={{ width: '100%', height: '5px', background: '#e2e8f0', borderRadius: '999px', overflow: 'hidden', marginTop: '4px' }}>
+              <div style={{
+                width: `${Math.min(100, Math.max(0, summary.collectionPercentage || 0))}%`,
+                height: '100%',
+                background: 'linear-gradient(90deg, #16a34a, #22c55e)',
+                borderRadius: '999px'
+              }} />
+            </div>
+          </div>
+
+          {/* Card 3: Total Outstanding Dues */}
+          <div style={{
+            background: 'var(--color-gallery-white)',
+            border: '1px solid #fecaca',
+            borderRadius: 'var(--radius-cards)',
+            padding: '18px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '12px', fontWeight: '600', color: '#dc2626', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Outstanding Dues
+              </span>
+              <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <AlertCircle size={16} />
+              </div>
+            </div>
+            <div style={{ fontSize: '22px', fontWeight: '700', color: '#b91c1c' }}>
+              {formatCurrency(summary.totalDueAmount)}
+            </div>
+            <div style={{ fontSize: '11.5px', color: 'var(--color-slate)' }}>
+              Pending institutional collection
+            </div>
+          </div>
+
+          {/* Card 4: Student Settlement Breakdown */}
+          <div style={{
+            background: 'var(--color-gallery-white)',
+            border: '1px solid var(--color-hairline-silver)',
+            borderRadius: 'var(--radius-cards)',
+            padding: '18px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--color-slate)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Settlement Status
+              </span>
+              <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: '#f8fafc', color: 'var(--color-slate)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Users size={16} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '2px' }}>
+              <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '3px 8px', borderRadius: '6px', fontSize: '11.5px', fontWeight: '600', color: '#059669' }}>
+                {summary.fullyPaidStudents} Paid
+              </div>
+              <div style={{ background: '#fffbeb', border: '1px solid #fde68a', padding: '3px 8px', borderRadius: '6px', fontSize: '11.5px', fontWeight: '600', color: '#d97706' }}>
+                {summary.partiallyPaidStudents} Partial
+              </div>
+              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', padding: '3px 8px', borderRadius: '6px', fontSize: '11.5px', fontWeight: '600', color: '#dc2626' }}>
+                {summary.unpaidStudents} Unpaid
+              </div>
+            </div>
+            <div style={{ fontSize: '11.5px', color: 'var(--color-slate)', marginTop: '2px' }}>
+              {summary.totalStudents} total student accounts
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* FILTER & CONTROL BAR */}
       <div style={{
