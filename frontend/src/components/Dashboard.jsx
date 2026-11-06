@@ -16,7 +16,8 @@ import {
   CreditCard,
   LayoutDashboard,
   Server,
-  Activity
+  Activity,
+  Sparkles
 } from 'lucide-react';
 import { decodeJwt } from '../utils/jwt';
 import AdmissionModule from './AdmissionModule';
@@ -31,6 +32,8 @@ import StaffPortalModule from './StaffPortalModule';
 import ParentProfileModule from './ParentProfileModule';
 import ChildAcademicsModule from './ChildAcademicsModule';
 import ParentTuitionFeeModule from './ParentTuitionFeeModule';
+import ParentRemarksModule from './ParentRemarksModule';
+import AdminProfileAnalyticsModule from './AdminProfileAnalyticsModule';
 
 export default function Dashboard({ user, token, onLogout }) {
   const decodedClaims = decodeJwt(token);
@@ -62,8 +65,8 @@ export default function Dashboard({ user, token, onLogout }) {
       id: 'profile',
       title: 'Admin Profile',
       tag: 'Security & Access',
-      subtitle: 'Administrator Credentials & Privileges',
-      desc: 'Super-user role permissions, authentication tokens, system credentials, and audit details.',
+      subtitle: 'Administrator Credentials & Admissions Analytics',
+      desc: 'Super-user credentials, student admissions breakdown by month & year, and parent tuition payment transactions.',
       icon: <User size={18} />,
       theme: { bg: '#faf5ff', color: '#9333ea', border: '#f3e8ff' }
     },
@@ -115,6 +118,15 @@ export default function Dashboard({ user, token, onLogout }) {
       desc: 'Term payment confirmations, tuition statements, and financial receipts.',
       icon: <CreditCard size={18} />,
       theme: { bg: '#ecfdf5', color: '#059669', border: '#d1fae5' }
+    },
+    {
+      id: 'remarks',
+      title: 'Remarks & Improvements',
+      tag: 'Teacher Guidance',
+      subtitle: 'Faculty Observations & Recommendations',
+      desc: 'Review teacher observations for your children, guidance suggestions, and send direct parent acknowledgments.',
+      icon: <Sparkles size={18} />,
+      theme: { bg: '#faf5ff', color: '#7c3aed', border: '#ede9fe' }
     }
   ];
 
@@ -460,6 +472,9 @@ export default function Dashboard({ user, token, onLogout }) {
                         </div>
                       </div>
                     </div>
+
+                    {/* ADMIN PROFILE ANALYTICS & BAR GRAPHS */}
+                    {isAdmin && <AdminProfileAnalyticsModule />}
                   </div>
                 )
               )}
@@ -533,6 +548,15 @@ export default function Dashboard({ user, token, onLogout }) {
               {/* PARENT: Tuition & Fees Module */}
               {isParent && selectedModule === 'fees' && (
                 <ParentTuitionFeeModule
+                  user={user}
+                  decodedClaims={decodedClaims}
+                  currentRole={currentRole}
+                />
+              )}
+
+              {/* PARENT: Remarks & Improvements Module */}
+              {isParent && selectedModule === 'remarks' && (
+                <ParentRemarksModule
                   user={user}
                   decodedClaims={decodedClaims}
                   currentRole={currentRole}

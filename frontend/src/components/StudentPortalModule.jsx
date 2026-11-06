@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import AdmissionModule from './AdmissionModule';
 import EnquiryModule from './EnquiryModule';
+import StudentFeeModule from './StudentFeeModule';
 
 const GATEWAY_URL = 'http://localhost:8099/api/student-portal';
 const DIRECT_URL = 'http://localhost:8090/api/student-portal';
@@ -2570,6 +2571,8 @@ export default function StudentPortalModule({ user, token, onLogout }) {
                             </div>
                           )}
                         </div>
+                      ) : mod.id === 'module5' ? (
+                        <StudentFeeModule user={user} profileData={profileData} />
                       ) : (
                         <div style={{ textAlign: 'center', padding: '48px 24px', backgroundColor: 'var(--color-studio-mist)', borderRadius: '18px' }}>
                           <div className="card-header-icon">

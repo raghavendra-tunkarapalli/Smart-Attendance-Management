@@ -40,6 +40,7 @@ import {
   Share2
 } from 'lucide-react';
 import { decodeJwt } from '../utils/jwt';
+import TeacherRemarkModule from './TeacherRemarkModule';
 
 const GATEWAY_URL = 'http://localhost:8099/api/teacher-portal';
 const DIRECT_URL = 'http://localhost:8091/api/teacher-portal';
@@ -793,12 +794,12 @@ export default function TeacherPortalModule({ user, token: propToken, onLogout, 
     },
     {
       id: 'module5',
-      title: 'Resources',
-      tag: 'Library & Payroll',
-      subtitle: 'Digital Library & Salary Paystubs',
-      desc: 'E-books, research journals, monthly compensation history & payroll records.',
-      icon: <CreditCard size={18} />,
-      theme: { bg: '#fffbeb', color: '#d97706', border: '#fef3c7' }
+      title: 'Remarks & Improvements',
+      tag: 'Academic Guidance',
+      subtitle: 'Student Academic Improvement & Parent Feedback',
+      desc: 'Send student academic improvement remarks directly to parents, track acknowledgments, and manage feedback.',
+      icon: <Sparkles size={18} />,
+      theme: { bg: '#faf5ff', color: '#7c3aed', border: '#ede9fe' }
     }
   ];
 
@@ -2524,9 +2525,14 @@ export default function TeacherPortalModule({ user, token: propToken, onLogout, 
             </div>
           )}
 
+          {/* MODULE 5: REMARKS & IMPROVEMENTS */}
+          {activeTab === 'module5' && (
+            <TeacherRemarkModule user={user} profileData={profileData} />
+          )}
+
           {/* OTHER MODULES WORKSPACE PLACEHOLDERS */}
           {modulesList.map((mod) => {
-            if (mod.id === 'module1' || mod.id === 'module2' || mod.id === 'module3' || mod.id === 'module4' || activeTab !== mod.id) return null;
+            if (mod.id === 'module1' || mod.id === 'module2' || mod.id === 'module3' || mod.id === 'module4' || mod.id === 'module5' || activeTab !== mod.id) return null;
             return (
               <div key={mod.id} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-20)' }}>
                 <div

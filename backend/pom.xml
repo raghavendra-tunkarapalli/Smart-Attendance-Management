@@ -35,5 +35,8 @@
         <module>parent-child-academic-service</module>
         <module>staff-fee-management-service</module>
         <module>parent-tuition-fee-service</module>
+        <module>student-fee-payment-service</module>
+        <module>teacher-remark-improvement-service</module>
+        <module>admin-profile-service</module>
     </modules>
 </project>

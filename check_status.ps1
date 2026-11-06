@@ -24,19 +24,43 @@ $services = @(
     @{ Name = "parent-profile-service"; Port = 8101 },
     @{ Name = "parent-child-academic-service"; Port = 8102 },
     @{ Name = "staff-fee-management-service"; Port = 8103 },
-    @{ Name = "parent-tuition-fee-service"; Port = 8104 }
+    @{ Name = "parent-tuition-fee-service"; Port = 8104 },
+    @{ Name = "student-fee-payment-service"; Port = 8105 },
+    @{ Name = "teacher-remark-improvement-service"; Port = 8106 },
+    @{ Name = "admin-profile-service"; Port = 8107 }
 )
 
-$activeConns = Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue
-$activePorts = $activeConns | Select-Object -ExpandProperty LocalPort -Unique
+function Test-Port([int]$Port) {
+    try {
+        $tcp = New-Object System.Net.Sockets.TcpClient([System.Net.Sockets.AddressFamily]::InterNetwork)
+        $iar = $tcp.BeginConnect("127.0.0.1", $Port, $null, $null)
+        if ($iar.AsyncWaitHandle.WaitOne(200, $false) -and $tcp.Connected) {
+            $tcp.EndConnect($iar)
+            $tcp.Close()
+            return $true
+        }
+        $tcp.Close()
+    } catch {}
+    try {
+        $tcp6 = New-Object System.Net.Sockets.TcpClient([System.Net.Sockets.AddressFamily]::InterNetworkV6)
+        $iar6 = $tcp6.BeginConnect([System.Net.IPAddress]::IPv6Loopback, $Port, $null, $null)
+        if ($iar6.AsyncWaitHandle.WaitOne(200, $false) -and $tcp6.Connected) {
+            $tcp6.EndConnect($iar6)
+            $tcp6.Close()
+            return $true
+        }
+        $tcp6.Close()
+    } catch {}
+    return $false
+}
 
 $upCount = 0
 foreach ($s in $services) {
-    if ($activePorts -contains $s.Port) {
+    if (Test-Port $s.Port) {
         Write-Host ("[ONLINE ] " + $s.Name.PadRight(32) + " Port " + $s.Port) -ForegroundColor Green
         $upCount++
     } else {
-        Write-Host ("[STARTING] " + $s.Name.PadRight(32) + " Port " + $s.Port) -ForegroundColor Yellow
+        Write-Host ("[OFFLINE] " + $s.Name.PadRight(32) + " Port " + $s.Port) -ForegroundColor Yellow
     }
 }
 

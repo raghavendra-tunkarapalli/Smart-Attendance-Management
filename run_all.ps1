@@ -15,8 +15,32 @@ Write-Host "==========================================================" -Foregro
 Write-Host "  Launching Smart Attendance Management Services Quickly   " -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
-# High-efficiency JVM startup flags: Tier 1 C1 compiler, low heap overhead, SerialGC, lazy initialization, local 127.0.0.1 Eureka binding
-$jvmArgs = "-XX:TieredStopAtLevel=1 -Xms64m -Xmx200m -XX:+UseSerialGC -Dspring.main.lazy-initialization=true -Djava.security.egd=file:/dev/./urandom -Deureka.instance.prefer-ip-address=true -Deureka.instance.ip-address=127.0.0.1"
+function Test-Port([int]$Port) {
+    try {
+        $tcp = New-Object System.Net.Sockets.TcpClient([System.Net.Sockets.AddressFamily]::InterNetwork)
+        $iar = $tcp.BeginConnect("127.0.0.1", $Port, $null, $null)
+        if ($iar.AsyncWaitHandle.WaitOne(200, $false) -and $tcp.Connected) {
+            $tcp.EndConnect($iar)
+            $tcp.Close()
+            return $true
+        }
+        $tcp.Close()
+    } catch {}
+    try {
+        $tcp6 = New-Object System.Net.Sockets.TcpClient([System.Net.Sockets.AddressFamily]::InterNetworkV6)
+        $iar6 = $tcp6.BeginConnect([System.Net.IPAddress]::IPv6Loopback, $Port, $null, $null)
+        if ($iar6.AsyncWaitHandle.WaitOne(200, $false) -and $tcp6.Connected) {
+            $tcp6.EndConnect($iar6)
+            $tcp6.Close()
+            return $true
+        }
+        $tcp6.Close()
+    } catch {}
+    return $false
+}
+
+# High-efficiency JVM startup flags: Tier 1 C1 compiler, 32MB initial, 160MB max, 256k stack, SerialGC, lazy initialization, local 127.0.0.1 Eureka binding
+$jvmArgs = "-XX:TieredStopAtLevel=1 -Xms32m -Xmx160m -Xss256k -XX:+UseSerialGC -Dspring.main.lazy-initialization=true -Djava.security.egd=file:/dev/./urandom -Deureka.instance.prefer-ip-address=true -Deureka.instance.ip-address=127.0.0.1"
 
 # Service definitions: Name, Path, Port
 $services = @(
@@ -44,12 +68,14 @@ $services = @(
     @{ Name = "parent-profile-service"; Path = "backend/parent-profile-service"; Port = 8101 },
     @{ Name = "parent-child-academic-service"; Path = "backend/parent-child-academic-service"; Port = 8102 },
     @{ Name = "staff-fee-management-service"; Path = "backend/staff-fee-management-service"; Port = 8103 },
-    @{ Name = "parent-tuition-fee-service"; Path = "backend/parent-tuition-fee-service"; Port = 8104 }
+    @{ Name = "parent-tuition-fee-service"; Path = "backend/parent-tuition-fee-service"; Port = 8104 },
+    @{ Name = "student-fee-payment-service"; Path = "backend/student-fee-payment-service"; Port = 8105 },
+    @{ Name = "teacher-remark-improvement-service"; Path = "backend/teacher-remark-improvement-service"; Port = 8106 },
+    @{ Name = "admin-profile-service"; Path = "backend/admin-profile-service"; Port = 8107 }
 )
 
 # 0. Check Database status (port 3306)
-$dbConn = Get-NetTCPConnection -LocalPort 3306 -State Listen -ErrorAction SilentlyContinue
-if ($dbConn) {
+if (Test-Port 3306) {
     Write-Host "[Database] MySQL is active and listening on port 3306." -ForegroundColor Green
 } else {
     Write-Host "[Database] WARNING: MySQL is not listening on port 3306. Check your MySQL service." -ForegroundColor Red
@@ -71,8 +97,7 @@ if ($missingJars -gt 0 -or $Rebuild) {
 }
 
 # 2. Start Frontend (Vite)
-$feConn = Get-NetTCPConnection -LocalPort 5173 -State Listen -ErrorAction SilentlyContinue
-if (-not $feConn) {
+if (-not (Test-Port 5173)) {
     Write-Host "[Frontend] Starting React (Vite) on port 5173..." -ForegroundColor Green
     $frontendLogOut = Join-Path $LogDir "frontend-out.log"
     $frontendLogErr = Join-Path $LogDir "frontend-err.log"
@@ -82,8 +107,7 @@ if (-not $feConn) {
 }
 
 # 3. Start Eureka Server
-$eurekaConn = Get-NetTCPConnection -LocalPort 8761 -State Listen -ErrorAction SilentlyContinue
-if (-not $eurekaConn) {
+if (-not (Test-Port 8761)) {
     Write-Host "[Eureka] Starting Eureka Server on port 8761..." -ForegroundColor Yellow
     $eurekaLogOut = Join-Path $LogDir "eureka-server-out.log"
     $eurekaLogErr = Join-Path $LogDir "eureka-server-err.log"
@@ -95,8 +119,7 @@ if (-not $eurekaConn) {
     $eurekaWait = 0
     while ($eurekaWait -lt 70) {
         Start-Sleep -Milliseconds 500
-        $eurekaConn = Get-NetTCPConnection -LocalPort 8761 -State Listen -ErrorAction SilentlyContinue
-        if ($eurekaConn) { 
+        if (Test-Port 8761) { 
             Write-Host "[Eureka] Server is now ONLINE on port 8761!" -ForegroundColor Green
             break 
         }
@@ -111,15 +134,14 @@ Write-Host "[Microservices] Launching API Gateway and domain services..." -Foreg
 $otherServices = $services | Where-Object { $_.Name -ne "eureka-server" }
 
 foreach ($svc in $otherServices) {
-    $existing = Get-NetTCPConnection -LocalPort $svc.Port -State Listen -ErrorAction SilentlyContinue
-    if (-not $existing) {
+    if (-not (Test-Port $svc.Port)) {
         $logOut = Join-Path $LogDir "$($svc.Name)-out.log"
         $logErr = Join-Path $LogDir "$($svc.Name)-err.log"
         $jarPath = Join-Path $PSScriptRoot "$($svc.Path)/target/$($svc.Name)-0.0.1-SNAPSHOT.jar"
         
         Write-Host "  -> Spawning $($svc.Name) (: $($svc.Port))..." -ForegroundColor Yellow
         Start-Process -FilePath "java.exe" -ArgumentList "$jvmArgs -jar `"$jarPath`"" -WorkingDirectory (Join-Path $PSScriptRoot $svc.Path) -NoNewWindow -RedirectStandardOutput $logOut -RedirectStandardError $logErr
-        Start-Sleep -Milliseconds 200
+        Start-Sleep -Milliseconds 300
     } else {
         Write-Host "  -> $($svc.Name) already running (: $($svc.Port))" -ForegroundColor DarkGreen
     }
@@ -138,9 +160,10 @@ if ($NoWait) {
 
     while ($iteration -lt $maxCheck) {
         Start-Sleep -Seconds 2
-        $activeConns = Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalPort -in $allPorts }
-        $activePorts = $activeConns | Select-Object -ExpandProperty LocalPort -Unique
-        $readyCount = if ($activePorts) { ($activePorts | Measure-Object).Count } else { 0 }
+        $readyCount = 0
+        foreach ($p in $allPorts) {
+            if (Test-Port $p) { $readyCount++ }
+        }
         $totalCount = $allPorts.Count
         if ($readyCount -ne $lastReported -or ($iteration % 5 -eq 0)) {
             Write-Host "[$([DateTime]::Now.ToString('HH:mm:ss'))] Ready services: $readyCount / $totalCount" -ForegroundColor Cyan
