@@ -27,7 +27,8 @@ $services = @(
     @{ Name = "parent-tuition-fee-service"; Port = 8104 },
     @{ Name = "student-fee-payment-service"; Port = 8105 },
     @{ Name = "teacher-remark-improvement-service"; Port = 8106 },
-    @{ Name = "admin-profile-service"; Port = 8107 }
+    @{ Name = "admin-profile-service"; Port = 8107 },
+    @{ Name = "admin-staff-directory-service"; Port = 8108 }
 )
 
 function Test-Port([int]$Port) {

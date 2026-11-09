@@ -71,7 +71,8 @@ $services = @(
     @{ Name = "parent-tuition-fee-service"; Path = "backend/parent-tuition-fee-service"; Port = 8104 },
     @{ Name = "student-fee-payment-service"; Path = "backend/student-fee-payment-service"; Port = 8105 },
     @{ Name = "teacher-remark-improvement-service"; Path = "backend/teacher-remark-improvement-service"; Port = 8106 },
-    @{ Name = "admin-profile-service"; Path = "backend/admin-profile-service"; Port = 8107 }
+    @{ Name = "admin-profile-service"; Path = "backend/admin-profile-service"; Port = 8107 },
+    @{ Name = "admin-staff-directory-service"; Path = "backend/admin-staff-directory-service"; Port = 8108 }
 )
 
 # 0. Check Database status (port 3306)

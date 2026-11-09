@@ -17,7 +17,8 @@ import {
   LayoutDashboard,
   Server,
   Activity,
-  Sparkles
+  Sparkles,
+  Users
 } from 'lucide-react';
 import { decodeJwt } from '../utils/jwt';
 import AdmissionModule from './AdmissionModule';
@@ -34,6 +35,7 @@ import ChildAcademicsModule from './ChildAcademicsModule';
 import ParentTuitionFeeModule from './ParentTuitionFeeModule';
 import ParentRemarksModule from './ParentRemarksModule';
 import AdminProfileAnalyticsModule from './AdminProfileAnalyticsModule';
+import AdminStaffDirectoryModule from './AdminStaffDirectoryModule';
 
 export default function Dashboard({ user, token, onLogout }) {
   const decodedClaims = decodeJwt(token);
@@ -80,12 +82,12 @@ export default function Dashboard({ user, token, onLogout }) {
       theme: { bg: '#eff6ff', color: '#2563eb', border: '#dbeafe' }
     },
     {
-      id: 'settings',
-      title: 'ERP Policies',
-      tag: 'Governance & Rules',
-      subtitle: 'Institutional Policies & Rules',
-      desc: 'Campus timetable policies, 7-period schedule limits, and attendance rules.',
-      icon: <Shield size={18} />,
+      id: 'staff-directory',
+      title: 'Staff Directory',
+      tag: 'Directory & Directives',
+      subtitle: 'Faculty Roster & Staff Directives',
+      desc: 'View campus staff directory and dispatch administrative directions to specific staff members or all staff.',
+      icon: <Users size={18} />,
       theme: { bg: '#ecfdf5', color: '#059669', border: '#d1fae5' }
     }
   ];
@@ -494,7 +496,8 @@ export default function Dashboard({ user, token, onLogout }) {
                       { name: 'Teacher Portal Service', port: '8091', status: 'ONLINE', desc: 'Faculty Directory & Subjects' },
                       { name: 'Teacher Attendance Service', port: '8094', status: 'ONLINE', desc: 'Period Roll Call & Roster' },
                       { name: 'Student Schedule Service', port: '8095', status: 'ONLINE', desc: 'Student Timetables & Classes' },
-                      { name: 'Parent Profile Service', port: '8101', status: 'ONLINE', desc: 'Guardian Profiles & Child Relations' }
+                      { name: 'Parent Profile Service', port: '8101', status: 'ONLINE', desc: 'Guardian Profiles & Child Relations' },
+                      { name: 'Admin Staff Directory Service', port: '8108', status: 'ONLINE', desc: 'Faculty Directory & Directives Dispatch' }
                     ].map((svc) => (
                       <div key={svc.name} style={{ background: 'var(--color-studio-mist)', border: '1px solid var(--color-hairline-silver)', borderRadius: '14px', padding: '16px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -511,27 +514,9 @@ export default function Dashboard({ user, token, onLogout }) {
                 </div>
               )}
 
-              {/* ADMIN: Settings Module */}
-              {isAdmin && selectedModule === 'settings' && (
-                <div>
-                  <h4 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '16px', color: 'var(--color-ink)' }}>
-                    Campus Academic & Attendance Governance
-                  </h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div style={{ background: 'var(--color-studio-mist)', padding: '16px 20px', borderRadius: '14px', border: '1px solid var(--color-hairline-silver)' }}>
-                      <div style={{ fontWeight: '600', fontSize: '14px', color: 'var(--color-ink)' }}>Period Limits Policy</div>
-                      <p style={{ fontSize: '13px', color: 'var(--color-slate)', margin: '4px 0 0 0' }}>
-                        Each faculty member is strictly capped at a maximum of 7 teaching periods per school day. Periods 1-7 run from 09:00 AM to 05:00 PM with 12:00-01:00 PM reserved for cafeteria recess.
-                      </p>
-                    </div>
-                    <div style={{ background: 'var(--color-studio-mist)', padding: '16px 20px', borderRadius: '14px', border: '1px solid var(--color-hairline-silver)' }}>
-                      <div style={{ fontWeight: '600', fontSize: '14px', color: 'var(--color-ink)' }}>Attendance Assignment Lock</div>
-                      <p style={{ fontSize: '13px', color: 'var(--color-slate)', margin: '4px 0 0 0' }}>
-                        Roll call rosters only display students for the specific class, section, date, and time slot where a teacher has been formally scheduled by administrative staff.
-                      </p>
-                    </div>
-                  </div>
-                </div>
+              {/* ADMIN: Staff Directory & Directives Module */}
+              {isAdmin && (selectedModule === 'staff-directory' || selectedModule === 'settings') && (
+                <AdminStaffDirectoryModule user={user} />
               )}
 
               {/* PARENT: Child Academics Module */}
