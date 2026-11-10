@@ -50,6 +50,21 @@ public class StaffDirection {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "acknowledged")
+    private Boolean acknowledged = false;
+
+    @Column(name = "acknowledged_at")
+    private LocalDateTime acknowledgedAt;
+
+    @Column(name = "acknowledged_by", length = 100)
+    private String acknowledgedBy;
+
+    @Column(name = "staff_response_note", columnDefinition = "TEXT")
+    private String staffResponseNote;
+
+    @Transient
+    private static final java.time.format.DateTimeFormatter FORMATTER = java.time.format.DateTimeFormatter.ofPattern("MMM dd, yyyy, hh:mm a");
+
     public StaffDirection() {}
 
     public StaffDirection(String directionCode, String title, String instruction, String targetType,
@@ -82,6 +97,9 @@ public class StaffDirection {
         }
         if (this.targetType == null) {
             this.targetType = "ALL_STAFF";
+        }
+        if (this.acknowledged == null) {
+            this.acknowledged = false;
         }
     }
 
@@ -201,6 +219,67 @@ public class StaffDirection {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Boolean getAcknowledged() {
+        if ("ALL_STAFF".equalsIgnoreCase(this.targetType)) {
+            return false;
+        }
+        return acknowledged != null && acknowledged;
+    }
+
+    public void setAcknowledged(Boolean acknowledged) {
+        this.acknowledged = acknowledged;
+    }
+
+    public LocalDateTime getAcknowledgedAt() {
+        if ("ALL_STAFF".equalsIgnoreCase(this.targetType)) {
+            return null;
+        }
+        return acknowledgedAt;
+    }
+
+    public void setAcknowledgedAt(LocalDateTime acknowledgedAt) {
+        this.acknowledgedAt = acknowledgedAt;
+    }
+
+    public String getAcknowledgedBy() {
+        if ("ALL_STAFF".equalsIgnoreCase(this.targetType)) {
+            return null;
+        }
+        return acknowledgedBy;
+    }
+
+    public void setAcknowledgedBy(String acknowledgedBy) {
+        this.acknowledgedBy = acknowledgedBy;
+    }
+
+    public String getStaffResponseNote() {
+        if ("ALL_STAFF".equalsIgnoreCase(this.targetType)) {
+            return null;
+        }
+        return staffResponseNote;
+    }
+
+    public void setStaffResponseNote(String staffResponseNote) {
+        this.staffResponseNote = staffResponseNote;
+    }
+
+    public String getFormattedCreatedAt() {
+        if (this.createdAt != null) {
+            return this.createdAt.format(FORMATTER);
+        }
+        return null;
+    }
+
+    public String getFormattedAcknowledgedAt() {
+        if ("ALL_STAFF".equalsIgnoreCase(this.targetType)) {
+            return null;
+        }
+        if (this.acknowledgedAt != null) {
+            return this.acknowledgedAt.format(FORMATTER);
+        }
+        return null;
     }
 }
 

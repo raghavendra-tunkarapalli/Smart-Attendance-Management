@@ -570,12 +570,13 @@ export default function StudentPortalModule({ user, token, onLogout }) {
 
   return (
     <div style={{ width: '100%', margin: '0', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-20)' }}>
-      {/* Top Banner Header (Apple Gallery White Flat Surface) */}
+      {/* Top Banner Header (Modern Blue Detailing Bar) */}
       <div style={{
-        background: 'var(--color-gallery-white)',
-        padding: 'var(--spacing-24) var(--spacing-28)',
-        borderRadius: 'var(--radius-cards)',
-        border: '1px solid var(--color-hairline-silver)',
+        background: 'linear-gradient(135deg, #1e40af 0%, #1e3a8a 50%, #0f172a 100%)',
+        padding: '22px 28px',
+        borderRadius: '16px',
+        color: '#ffffff',
+        boxShadow: '0 4px 14px rgba(30, 58, 138, 0.25)',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -588,13 +589,14 @@ export default function StudentPortalModule({ user, token, onLogout }) {
               width: '52px',
               height: '52px',
               borderRadius: '50%',
-              background: 'var(--color-ink)',
+              background: '#ffffff',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '19px',
-              fontWeight: '600',
-              color: 'var(--color-gallery-white)',
+              fontSize: '20px',
+              fontWeight: '800',
+              color: '#1e40af',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
               fontFamily: 'var(--font-sf-pro-display)'
             }}
           >
@@ -602,37 +604,53 @@ export default function StudentPortalModule({ user, token, onLogout }) {
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h2 style={{ fontSize: '22px', fontWeight: '600', color: 'var(--color-ink)', margin: 0, letterSpacing: '-0.5px' }}>
+              <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#ffffff', margin: 0, letterSpacing: '-0.5px' }}>
                 {firstName} {lastName}
               </h2>
-              <span className="role-pill" style={{ background: 'var(--color-studio-mist)', color: 'var(--color-ink)', border: '1px solid var(--color-hairline-silver)', fontSize: '11px', fontWeight: '600', padding: '3px 10px', borderRadius: 'var(--radius-buttons)' }}>
+              <span className="role-pill" style={{ background: 'rgba(255, 255, 255, 0.18)', backdropFilter: 'blur(8px)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.25)', fontSize: '11px', fontWeight: '700', padding: '3px 10px', borderRadius: 'var(--radius-buttons)' }}>
                 STUDENT PORTAL
               </span>
             </div>
-            <p style={{ fontSize: '13px', color: 'var(--color-slate)', marginTop: '4px', margin: 0 }}>
-              <Mail size={12} style={{ display: 'inline', marginRight: '5px' }} color="var(--color-steel)" />
+            <p style={{ fontSize: '13px', color: '#cbd5e1', marginTop: '4px', margin: 0, display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <Mail size={12} color="#93c5fd" />
               {email}
             </p>
           </div>
         </div>
 
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ background: 'var(--color-studio-mist)', padding: '8px 16px', borderRadius: '12px', border: '1px solid var(--color-control-gray)' }}>
-            <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em' }}>ENROLLED CLASS</div>
-            <div style={{ color: 'var(--color-pricing-blue)', fontWeight: '600', fontSize: '14px', marginTop: '2px' }}>
+          <div style={{ background: 'rgba(255, 255, 255, 0.12)', backdropFilter: 'blur(10px)', padding: '8px 16px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.2)' }}>
+            <div style={{ fontSize: '11px', color: '#93c5fd', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.04em' }}>ENROLLED CLASS</div>
+            <div style={{ color: '#ffffff', fontWeight: '700', fontSize: '14px', marginTop: '2px' }}>
               {studentClass}
             </div>
           </div>
 
-          <div style={{ background: 'var(--color-studio-mist)', padding: '8px 16px', borderRadius: '12px', border: '1px solid var(--color-control-gray)' }}>
-            <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em' }}>ADMISSION STATUS</div>
-            <div style={{ color: isConfirmed ? '#16a34a' : isRejected ? '#ef4444' : 'var(--color-launch-orange)', fontWeight: '600', fontSize: '14px', marginTop: '2px' }}>
+          <div style={{ background: 'rgba(255, 255, 255, 0.12)', backdropFilter: 'blur(10px)', padding: '8px 16px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.2)' }}>
+            <div style={{ fontSize: '11px', color: '#93c5fd', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.04em' }}>ADMISSION STATUS</div>
+            <div style={{ color: isConfirmed ? '#86efac' : isRejected ? '#fca5a5' : '#fed7aa', fontWeight: '700', fontSize: '14px', marginTop: '2px' }}>
               {status}
             </div>
           </div>
 
           {onLogout && (
-            <button className="btn-apple-outline" onClick={onLogout} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', fontSize: '12px' }}>
+            <button
+              onClick={onLogout}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 16px',
+                fontSize: '12px',
+                fontWeight: '600',
+                background: 'rgba(255, 255, 255, 0.15)',
+                color: '#ffffff',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+              }}
+            >
               <LogOut size={13} /> Sign Out
             </button>
           )}

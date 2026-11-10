@@ -31,10 +31,12 @@ import {
   User,
   Layers,
   Activity,
-  CreditCard
+  CreditCard,
+  Send
 } from 'lucide-react';
 import StaffExaminationModule from './StaffExaminationModule';
 import StaffFeeManagementModule from './StaffFeeManagementModule';
+import StaffAdminDirectoryModule from './StaffAdminDirectoryModule';
 
 export default function StaffPortalModule({ user }) {
   const [activeTab, setActiveTab] = useState('module1');
@@ -792,6 +794,15 @@ export default function StaffPortalModule({ user }) {
       icon: <CreditCard size={18} />,
       theme: { bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0' },
       desc: 'Tuition fees, 4-installment payment tracking, class-wise cards, and receipt logs.'
+    },
+    {
+      id: 'admin-directory',
+      title: 'Admin Directives',
+      subtitle: 'Administrative Directions & Instructions',
+      tag: 'Directions from Admin',
+      icon: <Send size={18} />,
+      theme: { bg: '#eff6ff', color: '#1d4ed8', border: '#bfdbfe' },
+      desc: 'Review administrative directions sent by Admin, acknowledge receipts, and log progress updates.'
     }
   ];
 
@@ -834,12 +845,13 @@ export default function StaffPortalModule({ user }) {
         </div>
       )}
 
-      {/* Top Banner Header (Apple Gallery White Flat Surface) */}
+      {/* Top Banner Header (Modern Blue Detailing Bar) */}
       <div style={{
-        background: 'var(--color-gallery-white)',
-        padding: 'var(--spacing-24) var(--spacing-28)',
-        borderRadius: 'var(--radius-cards)',
-        border: '1px solid var(--color-hairline-silver)',
+        background: 'linear-gradient(135deg, #1e40af 0%, #1e3a8a 50%, #0f172a 100%)',
+        padding: '22px 28px',
+        borderRadius: '16px',
+        color: '#ffffff',
+        boxShadow: '0 4px 14px rgba(30, 58, 138, 0.25)',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -852,13 +864,14 @@ export default function StaffPortalModule({ user }) {
               width: '52px',
               height: '52px',
               borderRadius: '50%',
-              background: 'var(--color-ink)',
+              background: '#ffffff',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '19px',
-              fontWeight: '600',
-              color: 'var(--color-gallery-white)',
+              fontSize: '20px',
+              fontWeight: '800',
+              color: '#1e40af',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
               fontFamily: 'var(--font-sf-pro-display)'
             }}
           >
@@ -866,24 +879,24 @@ export default function StaffPortalModule({ user }) {
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h2 style={{ fontSize: '22px', fontWeight: '600', color: 'var(--color-ink)', margin: 0, letterSpacing: '-0.5px' }}>
+              <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#ffffff', margin: 0, letterSpacing: '-0.5px' }}>
                 {firstName} {lastName}
               </h2>
-              <span className="role-pill" style={{ background: 'var(--color-studio-mist)', color: 'var(--color-ink)', border: '1px solid var(--color-hairline-silver)', fontSize: '11px', fontWeight: '600', padding: '3px 10px', borderRadius: 'var(--radius-buttons)' }}>
+              <span className="role-pill" style={{ background: 'rgba(255, 255, 255, 0.18)', backdropFilter: 'blur(8px)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.25)', fontSize: '11px', fontWeight: '700', padding: '3px 10px', borderRadius: 'var(--radius-buttons)' }}>
                 STAFF PORTAL
               </span>
             </div>
-            <p style={{ fontSize: '13px', color: 'var(--color-slate)', marginTop: '4px', margin: 0 }}>
-              <Mail size={12} style={{ display: 'inline', marginRight: '5px' }} color="var(--color-steel)" />
+            <p style={{ fontSize: '13px', color: '#cbd5e1', marginTop: '4px', margin: 0, display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <Mail size={12} color="#93c5fd" />
               {email}
             </p>
           </div>
         </div>
 
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          <div style={{ background: 'var(--color-studio-mist)', padding: '8px 16px', borderRadius: '12px', border: '1px solid var(--color-control-gray)' }}>
-            <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em' }}>ROLE</div>
-            <div style={{ color: 'var(--color-ink)', fontWeight: '600', fontSize: '14px', marginTop: '2px' }}>
+          <div style={{ background: 'rgba(255, 255, 255, 0.12)', backdropFilter: 'blur(10px)', padding: '8px 16px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.2)' }}>
+            <div style={{ fontSize: '11px', color: '#93c5fd', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.04em' }}>ROLE</div>
+            <div style={{ color: '#ffffff', fontWeight: '700', fontSize: '14px', marginTop: '2px' }}>
               Administrative Staff
             </div>
           </div>
@@ -2296,9 +2309,12 @@ export default function StaffPortalModule({ user }) {
                 ) : mod.id === 'module4' ? (
                   /* MODULE 4: EXAMINATIONS & RECORDINGS */
                   <StaffExaminationModule user={user} showToast={showToast} />
-                ) : (
+                ) : mod.id === 'module5' ? (
                   /* MODULE 5: FEE & PAYMENT MANAGEMENT */
                   <StaffFeeManagementModule user={user} showToast={showToast} />
+                ) : (
+                  /* MODULE 6 / admin-directory: ADMIN DIRECTIVES */
+                  <StaffAdminDirectoryModule user={user} showToast={showToast} />
                 )}
               </div>
             );

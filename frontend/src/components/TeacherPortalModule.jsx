@@ -806,13 +806,14 @@ export default function TeacherPortalModule({ user, token: propToken, onLogout, 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-20)', width: '100%', margin: '0' }}>
       
-      {/* TOP SECTION: Teacher Profile Card (Apple Gallery White Flat Surface) */}
+      {/* TOP SECTION: Teacher Profile Card (Modern Blue Detailing Bar) */}
       <div
         style={{
-          background: 'var(--color-gallery-white)',
-          border: '1px solid var(--color-hairline-silver)',
-          borderRadius: 'var(--radius-cards)',
-          padding: 'var(--spacing-24) var(--spacing-28)'
+          background: 'linear-gradient(135deg, #1e40af 0%, #1e3a8a 50%, #0f172a 100%)',
+          borderRadius: '16px',
+          padding: '22px 28px',
+          color: '#ffffff',
+          boxShadow: '0 4px 14px rgba(30, 58, 138, 0.25)'
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--spacing-16)', marginBottom: 'var(--spacing-20)' }}>
@@ -822,13 +823,14 @@ export default function TeacherPortalModule({ user, token: propToken, onLogout, 
                 width: '52px',
                 height: '52px',
                 borderRadius: '50%',
-                background: 'var(--color-ink)',
-                color: 'var(--color-gallery-white)',
+                background: '#ffffff',
+                color: '#1e40af',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '19px',
-                fontWeight: '600',
+                fontSize: '20px',
+                fontWeight: '800',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
                 fontFamily: 'var(--font-sf-pro-display)'
               }}
             >
@@ -836,15 +838,15 @@ export default function TeacherPortalModule({ user, token: propToken, onLogout, 
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-8)', flexWrap: 'wrap' }}>
-                <h2 style={{ color: 'var(--color-ink)', fontSize: '22px', fontWeight: '600', margin: 0, letterSpacing: '-0.5px' }}>
+                <h2 style={{ color: '#ffffff', fontSize: '22px', fontWeight: '700', margin: 0, letterSpacing: '-0.5px' }}>
                   {firstName} {lastName}
                 </h2>
-                <span className="role-pill" style={{ background: 'var(--color-studio-mist)', color: 'var(--color-ink)', border: '1px solid var(--color-hairline-silver)', fontSize: '11px', fontWeight: '600', padding: '3px 10px', borderRadius: 'var(--radius-buttons)' }}>
+                <span className="role-pill" style={{ background: 'rgba(255, 255, 255, 0.18)', backdropFilter: 'blur(8px)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.25)', fontSize: '11px', fontWeight: '700', padding: '3px 10px', borderRadius: 'var(--radius-buttons)' }}>
                   TEACHER PORTAL
                 </span>
               </div>
-              <p style={{ color: 'var(--color-slate)', fontSize: '13px', margin: '4px 0 0 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Mail size={12} color="var(--color-steel)" />
+              <p style={{ color: '#cbd5e1', fontSize: '13px', margin: '4px 0 0 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Mail size={12} color="#93c5fd" />
                 {email}
               </p>
             </div>
@@ -854,31 +856,38 @@ export default function TeacherPortalModule({ user, token: propToken, onLogout, 
             <span
               style={{
                 fontSize: '12px',
-                padding: '4px 12px',
+                padding: '5px 12px',
                 borderRadius: 'var(--radius-buttons)',
-                fontWeight: '500',
+                fontWeight: '600',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                background: 'var(--color-studio-mist)',
-                color: 'var(--color-ink)',
-                border: '1px solid var(--color-hairline-silver)'
+                background: 'rgba(255, 255, 255, 0.15)',
+                color: '#ffffff',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
+                backdropFilter: 'blur(8px)'
               }}
             >
-              <CheckCircle size={14} color="var(--color-pricing-blue)" />
+              <CheckCircle size={14} color="#86efac" />
               Account Active
             </span>
 
             {onLogout && (
               <button
-                className="btn-apple-outline"
                 onClick={onLogout}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
                   padding: '6px 16px',
-                  fontSize: '12px'
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  color: '#ffffff',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
                 }}
               >
                 <LogOut size={13} />
@@ -889,31 +898,31 @@ export default function TeacherPortalModule({ user, token: propToken, onLogout, 
         </div>
 
         {/* Profile Info Details Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--spacing-16)', paddingTop: 'var(--spacing-16)', borderTop: '1px solid var(--color-control-gray)' }}>
-          <div style={{ background: 'var(--color-studio-mist)', padding: '12px 16px', borderRadius: '14px', border: '1px solid var(--color-control-gray)' }}>
-            <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em' }}>TEACHER ID</div>
-            <div style={{ color: 'var(--color-ink)', fontWeight: '600', fontSize: '14px', marginTop: '2px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--spacing-16)', paddingTop: 'var(--spacing-16)', borderTop: '1px solid rgba(255, 255, 255, 0.15)' }}>
+          <div style={{ background: 'rgba(255, 255, 255, 0.12)', backdropFilter: 'blur(10px)', padding: '12px 16px', borderRadius: '14px', border: '1px solid rgba(255, 255, 255, 0.2)' }}>
+            <div style={{ fontSize: '11px', color: '#93c5fd', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.04em' }}>TEACHER ID</div>
+            <div style={{ color: '#ffffff', fontWeight: '700', fontSize: '14px', marginTop: '2px' }}>
               {userIdStr}
             </div>
           </div>
 
-          <div style={{ background: 'var(--color-studio-mist)', padding: '12px 16px', borderRadius: '14px', border: '1px solid var(--color-control-gray)' }}>
-            <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em' }}>TEACHER NAME</div>
-            <div style={{ color: 'var(--color-ink)', fontWeight: '600', fontSize: '14px', marginTop: '2px' }}>
+          <div style={{ background: 'rgba(255, 255, 255, 0.12)', backdropFilter: 'blur(10px)', padding: '12px 16px', borderRadius: '14px', border: '1px solid rgba(255, 255, 255, 0.2)' }}>
+            <div style={{ fontSize: '11px', color: '#93c5fd', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.04em' }}>TEACHER NAME</div>
+            <div style={{ color: '#ffffff', fontWeight: '700', fontSize: '14px', marginTop: '2px' }}>
               {fullName}
             </div>
           </div>
 
-          <div style={{ background: 'var(--color-studio-mist)', padding: '12px 16px', borderRadius: '14px', border: '1px solid var(--color-control-gray)' }}>
-            <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em' }}>PRIMARY SUBJECT</div>
-            <div style={{ color: 'var(--color-pricing-blue)', fontWeight: '600', fontSize: '14px', marginTop: '2px' }}>
+          <div style={{ background: 'rgba(255, 255, 255, 0.12)', backdropFilter: 'blur(10px)', padding: '12px 16px', borderRadius: '14px', border: '1px solid rgba(255, 255, 255, 0.2)' }}>
+            <div style={{ fontSize: '11px', color: '#93c5fd', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.04em' }}>PRIMARY SUBJECT</div>
+            <div style={{ color: '#ffffff', fontWeight: '700', fontSize: '14px', marginTop: '2px' }}>
               {teacherSubjects.length > 0 ? teacherSubjects.map(s => s.subject).join(', ') : (profileData?.primarySubject || 'Mathematics')}
             </div>
           </div>
 
-          <div style={{ background: 'var(--color-studio-mist)', padding: '12px 16px', borderRadius: '14px', border: '1px solid var(--color-control-gray)' }}>
-            <div style={{ fontSize: '11px', color: 'var(--color-slate)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em' }}>ROLE</div>
-            <div style={{ color: 'var(--color-ink)', fontWeight: '600', fontSize: '14px', marginTop: '2px' }}>
+          <div style={{ background: 'rgba(255, 255, 255, 0.12)', backdropFilter: 'blur(10px)', padding: '12px 16px', borderRadius: '14px', border: '1px solid rgba(255, 255, 255, 0.2)' }}>
+            <div style={{ fontSize: '11px', color: '#93c5fd', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.04em' }}>ROLE</div>
+            <div style={{ color: '#ffffff', fontWeight: '700', fontSize: '14px', marginTop: '2px' }}>
               Faculty Member
             </div>
           </div>

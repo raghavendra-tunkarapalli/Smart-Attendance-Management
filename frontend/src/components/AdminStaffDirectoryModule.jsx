@@ -192,6 +192,26 @@ export default function AdminStaffDirectoryModule({ user }) {
     }
   };
 
+  // Date and Time formatter
+  const formatDateTime = (dateVal) => {
+    if (!dateVal) return 'N/A';
+    try {
+      const d = new Date(dateVal);
+      if (isNaN(d.getTime())) return String(dateVal);
+      return d.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      }) + ', ' + d.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch (e) {
+      return String(dateVal);
+    }
+  };
+
   // Delete direction
   const handleDeleteDirection = async (id) => {
     if (!window.confirm('Are you sure you want to remove this direction?')) return;
@@ -229,7 +249,13 @@ export default function AdminStaffDirectoryModule({ user }) {
   // Filtered directions list
   const filteredDirections = useMemo(() => {
     return directions.filter((d) => {
-      if (statusFilter !== 'ALL' && d.status !== statusFilter) return false;
+      const isSeen = d.acknowledged || d.status === 'ACKNOWLEDGED' || (d.acknowledgedAt != null);
+
+      if (statusFilter === 'ACTIVE' && d.status !== 'ACTIVE') return false;
+      if (statusFilter === 'COMPLETED' && d.status !== 'COMPLETED') return false;
+      if (statusFilter === 'SEEN' && (!isSeen || d.targetType === 'ALL_STAFF')) return false;
+      if (statusFilter === 'UNSEEN' && (isSeen || d.targetType === 'ALL_STAFF')) return false;
+
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase();
       return (
@@ -238,7 +264,8 @@ export default function AdminStaffDirectoryModule({ user }) {
         d.targetStaffName?.toLowerCase().includes(q) ||
         d.targetStaffCode?.toLowerCase().includes(q) ||
         d.directionCode?.toLowerCase().includes(q) ||
-        d.targetDepartment?.toLowerCase().includes(q)
+        d.targetDepartment?.toLowerCase().includes(q) ||
+        d.acknowledgedBy?.toLowerCase().includes(q)
       );
     });
   }, [directions, statusFilter, searchQuery]);
@@ -603,24 +630,45 @@ export default function AdminStaffDirectoryModule({ user }) {
                 ))}
               </div>
             ) : (
-              <div style={{ display: 'flex', gap: '6px' }}>
-                {['ALL', 'ACTIVE', 'COMPLETED'].map((s) => (
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {[
+                  { id: 'ALL', label: 'All Directives', count: directions.length },
+                  { id: 'SEEN', label: 'Staff Seen', count: directions.filter(d => d.targetType === 'INDIVIDUAL' && (d.acknowledged || d.status === 'ACKNOWLEDGED' || d.acknowledgedAt != null)).length },
+                  { id: 'UNSEEN', label: 'Awaiting View', count: directions.filter(d => d.targetType === 'INDIVIDUAL' && !(d.acknowledged || d.status === 'ACKNOWLEDGED' || d.acknowledgedAt != null)).length },
+                  { id: 'ACTIVE', label: 'Active', count: directions.filter(d => d.status === 'ACTIVE').length },
+                  { id: 'COMPLETED', label: 'Completed', count: directions.filter(d => d.status === 'COMPLETED').length }
+                ].map((s) => (
                   <button
-                    key={s}
-                    onClick={() => setStatusFilter(s)}
+                    key={s.id}
+                    onClick={() => setStatusFilter(s.id)}
                     style={{
                       padding: '5px 10px',
                       borderRadius: '8px',
                       fontSize: '11px',
-                      fontWeight: statusFilter === s ? 700 : 500,
+                      fontWeight: statusFilter === s.id ? 700 : 500,
                       border: '1px solid',
-                      borderColor: statusFilter === s ? '#2563eb' : '#e2e8f0',
-                      background: statusFilter === s ? '#eff6ff' : '#ffffff',
-                      color: statusFilter === s ? '#1d4ed8' : '#64748b',
-                      cursor: 'pointer'
+                      borderColor: statusFilter === s.id ? '#2563eb' : '#e2e8f0',
+                      background: statusFilter === s.id ? '#eff6ff' : '#ffffff',
+                      color: statusFilter === s.id ? '#1d4ed8' : '#64748b',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
                     }}
                   >
-                    {s === 'ALL' ? 'All Directives' : s === 'ACTIVE' ? 'Active' : 'Completed'}
+                    <span>{s.label}</span>
+                    <span
+                      style={{
+                        background: statusFilter === s.id ? '#dbeafe' : '#f1f5f9',
+                        color: statusFilter === s.id ? '#1e40af' : '#64748b',
+                        padding: '1px 5px',
+                        borderRadius: '6px',
+                        fontSize: '10px',
+                        fontWeight: 700
+                      }}
+                    >
+                      {s.count}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -825,18 +873,22 @@ export default function AdminStaffDirectoryModule({ user }) {
                 const isCompleted = dir.status === 'COMPLETED';
                 const isUrgent = dir.priority === 'URGENT';
                 const isHigh = dir.priority === 'HIGH';
+                const isSeen = dir.acknowledged || dir.status === 'ACKNOWLEDGED' || (dir.acknowledgedAt != null);
+                const dispatchedDateTime = dir.formattedCreatedAt || formatDateTime(dir.createdAt);
+                const seenDateTime = dir.formattedAcknowledgedAt || (dir.acknowledgedAt ? formatDateTime(dir.acknowledgedAt) : null);
 
                 return (
                   <div
                     key={dir.id || dir.directionCode}
                     style={{
                       border: '1px solid',
-                      borderColor: isUrgent ? '#fecaca' : isCompleted ? '#e2e8f0' : '#bfdbfe',
+                      borderColor: isSeen ? '#bbf7d0' : isUrgent ? '#fecaca' : isCompleted ? '#e2e8f0' : '#bfdbfe',
                       borderRadius: '14px',
-                      background: isCompleted ? '#fbfcfe' : '#ffffff',
+                      background: isCompleted ? '#fbfcfe' : isSeen ? 'linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%)' : '#ffffff',
                       padding: '18px 20px',
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-                      position: 'relative'
+                      boxShadow: isSeen ? '0 2px 8px rgba(16, 185, 129, 0.04)' : '0 2px 6px rgba(0,0,0,0.02)',
+                      position: 'relative',
+                      transition: 'border-color 0.2s ease'
                     }}
                   >
                     {/* Header line */}
@@ -902,6 +954,87 @@ export default function AdminStaffDirectoryModule({ user }) {
                             {dir.priority} PRIORITY
                           </span>
 
+                          {/* Stored Dispatch Date & Time Badge */}
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '2px 9px',
+                              borderRadius: '10px',
+                              background: '#f8fafc',
+                              color: '#475569',
+                              border: '1px solid #cbd5e1'
+                            }}
+                            title="Exact stored dispatch date and time in database"
+                          >
+                            <Calendar size={12} style={{ color: '#059669' }} />
+                            <span>Dispatched: <strong>{dispatchedDateTime}</strong></span>
+                          </span>
+
+                          {/* Staff Seen Status Badge (Only for Targeted Staff Directives) */}
+                          {dir.targetType === 'ALL_STAFF' ? (
+                            <span
+                              style={{
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                padding: '2px 10px',
+                                borderRadius: '12px',
+                                background: '#eff6ff',
+                                color: '#1d4ed8',
+                                border: '1px solid #bfdbfe'
+                              }}
+                              title="Broadcast notice sent to all staff members (No individual acknowledgment tracking)"
+                            >
+                              <Users size={12} />
+                              CAMPUS BROADCAST (NO ACK)
+                            </span>
+                          ) : isSeen ? (
+                            <span
+                              style={{
+                                fontSize: '11px',
+                                fontWeight: 800,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                padding: '2px 10px',
+                                borderRadius: '12px',
+                                background: '#ecfdf5',
+                                color: '#047857',
+                                border: '1.5px solid #10b981',
+                                boxShadow: '0 1px 3px rgba(16, 185, 129, 0.15)'
+                              }}
+                              title="Staff has reviewed and acknowledged this directive"
+                            >
+                              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block', boxShadow: '0 0 0 2px rgba(16, 185, 129, 0.3)' }} />
+                              STAFF SAW DIRECTORY
+                            </span>
+                          ) : (
+                            <span
+                              style={{
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                padding: '2px 9px',
+                                borderRadius: '12px',
+                                background: '#fffbeb',
+                                color: '#b45309',
+                                border: '1px solid #fde68a'
+                              }}
+                              title="Awaiting staff view in staff portal"
+                            >
+                              <Clock size={11} style={{ color: '#d97706' }} />
+                              AWAITING STAFF VIEW
+                            </span>
+                          )}
+
                           {/* Status Badge */}
                           <span
                             style={{
@@ -912,8 +1045,9 @@ export default function AdminStaffDirectoryModule({ user }) {
                               gap: '4px',
                               padding: '2px 8px',
                               borderRadius: '10px',
-                              background: isCompleted ? '#f1f5f9' : '#ecfdf5',
-                              color: isCompleted ? '#64748b' : '#047857'
+                              background: isCompleted ? '#f1f5f9' : '#f8fafc',
+                              color: isCompleted ? '#64748b' : '#334155',
+                              border: `1px solid ${isCompleted ? '#e2e8f0' : '#cbd5e1'}`
                             }}
                           >
                             {isCompleted ? <CheckCircle size={12} /> : <Clock size={12} />}
@@ -990,6 +1124,236 @@ export default function AdminStaffDirectoryModule({ user }) {
                       {dir.instruction}
                     </div>
 
+                    {/* ============================================================== */}
+                    {/* STAFF VERIFICATION STATUS (Broadcast VS Staff Seen / Awaiting View) */}
+                    {/* ============================================================== */}
+                    {dir.targetType === 'ALL_STAFF' ? (
+                      <div
+                        style={{
+                          background: '#eff6ff',
+                          border: '1.5px solid #bfdbfe',
+                          borderRadius: '12px',
+                          padding: '12px 18px',
+                          margin: '12px 0 6px 0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          flexWrap: 'wrap',
+                          gap: '12px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                          <div
+                            style={{
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '50%',
+                              background: '#dbeafe',
+                              border: '1.5px solid #3b82f6',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}
+                          >
+                            <Users size={16} style={{ color: '#1d4ed8' }} />
+                          </div>
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontSize: '13px', fontWeight: 800, color: '#1e40af' }}>
+                                Campus Broadcast Notice (All Staff)
+                              </span>
+                              <span
+                                style={{
+                                  background: '#3b82f6',
+                                  color: '#ffffff',
+                                  fontSize: '10px',
+                                  fontWeight: 700,
+                                  padding: '1px 8px',
+                                  borderRadius: '10px'
+                                }}
+                              >
+                                INFORMATIONAL
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#1e40af', marginTop: '2px' }}>
+                              Institutional direction dispatched to all campus personnel. Individual acknowledgment is not tracked for broadcast notices.
+                            </div>
+                          </div>
+                        </div>
+
+                        <div
+                          style={{
+                            fontSize: '11px',
+                            color: '#1d4ed8',
+                            background: '#ffffff',
+                            border: '1px solid #93c5fd',
+                            borderRadius: '8px',
+                            padding: '5px 12px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <Users size={13} style={{ color: '#2563eb' }} />
+                          <span>All Staff Directive</span>
+                        </div>
+                      </div>
+                    ) : isSeen ? (
+                      <div
+                        style={{
+                          background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+                          border: '1.5px solid #86efac',
+                          borderRadius: '12px',
+                          padding: '12px 18px',
+                          margin: '12px 0 6px 0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          flexWrap: 'wrap',
+                          gap: '12px',
+                          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.08)'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                          {/* Prominent Green Symbol */}
+                          <div
+                            style={{
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '50%',
+                              background: '#10b981',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              boxShadow: '0 0 0 4px rgba(16, 185, 129, 0.2)',
+                              flexShrink: 0
+                            }}
+                          >
+                            <Check size={18} style={{ color: '#ffffff', strokeWidth: 3 }} />
+                          </div>
+
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontSize: '13px', fontWeight: 800, color: '#065f46' }}>
+                                Staff Saw Directory
+                              </span>
+                              <span
+                                style={{
+                                  background: '#10b981',
+                                  color: '#ffffff',
+                                  fontSize: '10px',
+                                  fontWeight: 800,
+                                  padding: '1px 8px',
+                                  borderRadius: '10px',
+                                  letterSpacing: '0.04em'
+                                }}
+                              >
+                                VERIFIED
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#047857', fontWeight: 600, marginTop: '2px' }}>
+                              ✓ Verified receipt by <strong>{dir.acknowledgedBy || dir.targetStaffName || 'Staff Member'}</strong> on {seenDateTime || 'Active Record'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Read-Only Badge (Admin cannot toggle - only staff can toggle) */}
+                        <div
+                          style={{
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            color: '#047857',
+                            background: '#ffffff',
+                            border: '1px solid #a7f3d0',
+                            borderRadius: '8px',
+                            padding: '5px 12px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <CheckCircle2 size={13} style={{ color: '#059669' }} />
+                          <span>Acknowledged by Staff</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          background: '#f8fafc',
+                          border: '1.5px solid #e2e8f0',
+                          borderRadius: '12px',
+                          padding: '12px 18px',
+                          margin: '12px 0 6px 0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          flexWrap: 'wrap',
+                          gap: '12px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                          {/* Awaiting Review Gray / Amber Symbol */}
+                          <div
+                            style={{
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '50%',
+                              background: '#f1f5f9',
+                              border: '2px dashed #94a3b8',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}
+                          >
+                            <Clock size={16} style={{ color: '#64748b' }} />
+                          </div>
+
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontSize: '13px', fontWeight: 700, color: '#334155' }}>
+                                Awaiting Staff View
+                              </span>
+                              <span
+                                style={{
+                                  background: '#f1f5f9',
+                                  color: '#64748b',
+                                  fontSize: '10px',
+                                  fontWeight: 700,
+                                  padding: '1px 8px',
+                                  borderRadius: '10px'
+                                }}
+                              >
+                                NOT YET SEEN
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                              Staff member has not yet reviewed or toggled this directive in the Staff Portal.
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Read-Only Status Indicator */}
+                        <div
+                          style={{
+                            fontSize: '11px',
+                            color: '#94a3b8',
+                            background: '#ffffff',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '8px',
+                            padding: '5px 12px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <Clock size={12} />
+                          <span>Pending Staff Toggle</span>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Metadata footer */}
                     <div
                       style={{
@@ -1004,7 +1368,7 @@ export default function AdminStaffDirectoryModule({ user }) {
                         paddingTop: '8px'
                       }}
                     >
-                      <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
                         <span>
                           Issued by: <strong>{dir.issuedBy || 'Super Administrator'}</strong>
                         </span>
@@ -1019,7 +1383,10 @@ export default function AdminStaffDirectoryModule({ user }) {
                           </span>
                         )}
                       </div>
-                      <div>Dispatched on: {dir.createdAt ? new Date(dir.createdAt).toLocaleDateString() : 'Active'}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span>Dispatched on:</span>
+                        <strong style={{ color: '#0f172a' }}>{dispatchedDateTime}</strong>
+                      </div>
                     </div>
                   </div>
                 );

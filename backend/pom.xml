@@ -39,5 +39,6 @@
         <module>teacher-remark-improvement-service</module>
         <module>admin-profile-service</module>
         <module>admin-staff-directory-service</module>
+        <module>staff-admin-directory-service</module>
     </modules>
 </project>
